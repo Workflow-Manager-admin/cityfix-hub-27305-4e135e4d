@@ -76,12 +76,13 @@ function Toast({ message, type = "success", onClose }) {
  * PUBLIC_INTERFACE
  */
 function MapThumbnail({ lat, lng, width = "100%", height = 120, borderRadius = 6, border = "#223", style = {}, linkOnly = false }) {
+  // Map preview for OpenStreetMap only. No Google Maps reference.
   const [error, setError] = useState(false);
   if (!lat || !lng) return null;
 
   const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
   const embedSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.004},${lat - 0.003},${lng + 0.004},${lat + 0.003}&layer=mapnik&marker=${lat},${lng}`;
-  // Try iframe; if fails, fallback to just clickable OPEN MAP link
+  // Try iframe; if fails, fallback to just clickable OSM link
   if (error || linkOnly) {
     return (
       <div style={{ width, minHeight: 45, margin: "2px 0" }}>
@@ -109,16 +110,6 @@ function MapThumbnail({ lat, lng, width = "100%", height = 120, borderRadius = 6
       <div style={{ textAlign: "right", fontSize: 11, color: "#aaa", padding: "1px 4px 2px 0" }}>
         <a href={osmUrl} tabIndex={-1} rel="noopener noreferrer" target="_blank" style={{ color: "#6ce6dc" }}>
           View Larger (OSM)
-        </a>{" "}
-        |{" "}
-        <a
-          href={`https://maps.google.com/?q=${lat},${lng}`}
-          tabIndex={-1}
-          rel="noopener noreferrer"
-          target="_blank"
-          style={{ color: "#aaffec" }}
-        >
-          Google Maps
         </a>
       </div>
     </div>
@@ -141,11 +132,7 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
   // Only show valid map for proper coordinates
   const hasCoords = location?.lat && location?.lng;
 
-  // Google Maps direct link fallback
-  const gmapsUrl = hasCoords
-    ? `https://maps.google.com/?q=${location.lat},${location.lng}`
-    : null;
-
+  // No Google Maps direct link; OSM only
   return (
     <div
       className="cityfix-card"
@@ -240,36 +227,18 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
             📍
           </span>
           {hasCoords ? (
-            <>
-              <a
-                href={gmapsUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7, wordBreak: "keep-all", display: "inline-block" }}
-                title="Open location in Google Maps"
-              >
-                <span>
-                  Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
-                  | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
-                </span>
-              </a>
-              <a
-                href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=18/${location.lat}/${location.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                tabIndex={-1}
-                style={{
-                  color: "#aaffec",
-                  textDecoration: "underline",
-                  fontSize: 11,
-                  marginLeft: 5,
-                  marginRight: 2,
-                }}
-                title="Open location in OpenStreetMap"
-              >
-                OSM
-              </a>
-            </>
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=18/${location.lat}/${location.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7, wordBreak: "keep-all", display: "inline-block" }}
+              title="Open location in OpenStreetMap"
+            >
+              <span>
+                Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
+                | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
+              </span>
+            </a>
           ) : (
             <span style={{ color: "#ff9999" }}>Location N/A</span>
           )}
@@ -1238,28 +1207,17 @@ function CityFixHubContainer() {
                   >
                     <span role="img" aria-label="Location">📍</span>
                     {location.lat && location.lng ? (
-                      <>
-                        <a
-                          href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7 }}
-                          title="Open location in Google Maps"
-                        >
-                          <span>
-                            {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                          </span>
-                        </a>
-                        <a
-                          href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          style={{ color: "#aaffec", textDecoration: "underline", fontSize: 11 }}
-                          title="Open location in OpenStreetMap"
-                        >
-                          OSM
-                        </a>
-                      </>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7 }}
+                        title="Open location in OpenStreetMap"
+                      >
+                        <span>
+                          {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                        </span>
+                      </a>
                     ) : locationStatus ? (
                       locationStatus
                     ) : (
