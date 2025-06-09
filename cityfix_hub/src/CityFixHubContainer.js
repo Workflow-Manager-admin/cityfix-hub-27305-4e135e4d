@@ -69,7 +69,7 @@ function Toast({ message, type = "success", onClose }) {
   );
 }
 
-// Report Card
+/* Updated Report Card: shows location beneath the photo in a distinct, clean block */
 function ReportCard({ report, isAdmin, onStatusChange }) {
   const {
     id,
@@ -97,46 +97,97 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
         position: "relative",
       }}
     >
-      <div style={{ width: "100%", minHeight: 130, background: "#222", borderRadius: 6, overflow: "hidden", display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div
+        style={{
+          width: "100%",
+          minHeight: 130,
+          background: "#222",
+          borderRadius: 6,
+          overflow: "hidden",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: 0,
+        }}
+      >
         {photo ? (
           // eslint-disable-next-line
           <img
             src={photo}
             alt="Issue"
-            style={{ height: 130, width: "auto", maxWidth: "100%", objectFit: "cover" }}
+            style={{
+              height: 130,
+              width: "auto",
+              maxWidth: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
           />
         ) : (
           <span style={{ color: "#444", fontSize: 80 }}>📷</span>
         )}
       </div>
+      {/* Location as a prominent badge/block directly under the photo */}
+      <div
+        style={{
+          width: "100%",
+          background: "#131834",
+          border: "1px solid #223",
+          borderRadius: 5,
+          color: "#aae4c7",
+          fontSize: 13.2,
+          padding: "6px 9px 5px 5px",
+          marginTop: 3,
+          marginBottom: 1,
+          letterSpacing: 0.1,
+          fontFamily: "monospace",
+          display: "flex",
+          alignItems: "center",
+          gap: 6,
+          overflowX: "auto",
+          wordBreak: "break-word",
+        }}
+        aria-label={`Latitude and longitude for this issue${location?.lat && location?.lng
+          ? `: ${location.lat}, ${location.lng}` : ""}`}
+      >
+        <span role="img" aria-label="location" style={{ fontSize: 15 }}>
+          📍
+        </span>
+        {location?.lat && location?.lng ? (
+          <>
+            Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
+            | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
+          </>
+        ) : (
+          <span style={{ color: "#ff9999" }}>Location N/A</span>
+        )}
+      </div>
       <div style={{ fontWeight: 600, color: "var(--primary)" }}>{type}</div>
-      <div style={{ color: "var(--text-secondary)", fontSize: 15 }}>{description || <span style={{ color: '#555' }}>No description</span>}</div>
-      <div style={{ color: "#b2f3b2", fontSize: 13 }}>
-        <span role="img" aria-label="location">📍</span>
-        {location?.lat && location?.lng
-          ? ` ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`
-          : " Location N/A"}
+      <div style={{ color: "var(--text-secondary)", fontSize: 15 }}>
+        {description || <span style={{ color: "#555" }}>No description</span>}
       </div>
       <div style={{ marginTop: 2, fontSize: 13, color: "#aaa" }}>
         <span>Status: </span>
-        <b style={{
-          color:
-            status === "Fixed"
-              ? "var(--accent)"
-              : status === "In Progress"
-                ? "#ffe400"
-                : "#7fdbff",
-        }}>
+        <b
+          style={{
+            color:
+              status === "Fixed"
+                ? "var(--accent)"
+                : status === "In Progress"
+                  ? "#ffe400"
+                  : "#7fdbff",
+          }}
+        >
           {status}
         </b>
       </div>
       {createdAt && (
-        <span style={{ color: '#888', fontSize: 12, marginTop: -7 }}>
+        <span style={{ color: "#888", fontSize: 12, marginTop: -7 }}>
           {new Date(createdAt).toLocaleString()}
         </span>
       )}
       {isAdmin && (
-        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+        <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
           {STATUS_OPTIONS.map((opt) =>
             opt !== status ? (
               <button
@@ -145,11 +196,12 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
                 style={{
                   fontSize: 13,
                   padding: "6px 12px",
-                  background: opt === "Fixed"
-                    ? "var(--accent)"
-                    : opt === "In Progress"
-                      ? "var(--secondary)"
-                      : "#7fdbff",
+                  background:
+                    opt === "Fixed"
+                      ? "var(--accent)"
+                      : opt === "In Progress"
+                        ? "var(--secondary)"
+                        : "#7fdbff",
                   color: "#222",
                 }}
                 onClick={() => onStatusChange && onStatusChange(id, opt)}
@@ -710,29 +762,66 @@ function CityFixHubContainer() {
                 <label style={{ fontWeight: 500 }}>
                   Location <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
+                    flexWrap: "wrap",
+                  }}
+                >
                   <button
                     type="button"
                     className="btn"
-                    style={{ fontSize: 15, background: "var(--secondary)" }}
+                    style={{
+                      fontSize: 15,
+                      background: "var(--secondary)",
+                      minWidth: 136,
+                    }}
                     onClick={handleGetLocation}
                   >
                     {location.lat && location.lng
                       ? "Update Location"
                       : "Capture Location"}
                   </button>
+                  {/* Location preview block */}
                   <span
                     style={{
-                      color: locationStatus === "Captured!" ? "var(--accent)" : locationStatus === "Failed" ? "#ff5555" : "#fff",
+                      color:
+                        locationStatus === "Captured!"
+                          ? "var(--accent)"
+                          : locationStatus === "Failed"
+                          ? "#ff5555"
+                          : "#fff",
                       fontSize: 13,
+                      fontFamily: "monospace",
+                      background: "#111622",
+                      border: "1.3px solid #224",
+                      padding: "4.5px 8px",
+                      borderRadius: 6,
+                      minWidth: 120,
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                      letterSpacing: 0.2,
+                      marginTop: 2,
                     }}
                   >
-                    {/* If captured, display lat/lng */}
-                    {location.lat && location.lng ?
-                      `📍 ${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}`
-                      : locationStatus || "Not set"}
+                    <span role="img" aria-label="Location">📍</span>
+                    {location.lat && location.lng ? (
+                      <>
+                        <span>
+                          {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                        </span>
+                      </>
+                    ) : locationStatus ? (
+                      locationStatus
+                    ) : (
+                      "Not set"
+                    )}
                   </span>
                 </div>
+                {/* Accessible text fallback for manual entry (unsupported) */}
                 {locationStatus === "Geolocation unsupported" && (
                   <span style={{ fontSize: 13, color: "#ff5555" }}>
                     Location autofill is not supported by your device/browser. Please enter location manually.
