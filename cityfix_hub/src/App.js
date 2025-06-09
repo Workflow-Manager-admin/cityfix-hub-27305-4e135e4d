@@ -10,7 +10,7 @@ import About from "./About";
 import NavigationBar from './NavigationBar';
 
 // Try to import react-router-dom (if installed)
-let Router, Routes, Route, BrowserRouter;
+let Routes, Route, BrowserRouter;
 try {
   // eslint-disable-next-line
   ({

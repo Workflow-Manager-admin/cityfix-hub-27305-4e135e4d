@@ -904,7 +904,7 @@ function CityFixHubContainer() {
       setAddressFetchError(null);
       setIsFetchingAddress(false);
     }
-  }, [location.lat, location.lng]);
+  }, [location.lat, location.lng, address, isManualAddressEdit]);
   // PUBLIC_INTERFACE
   async function handleSubmit(e) {
     e.preventDefault();

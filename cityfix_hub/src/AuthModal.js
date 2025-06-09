@@ -15,7 +15,7 @@ function SignInForm({ onSuccess }) {
       errs.identifier = "Email or phone is required.";
     } else if (
       !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(values.identifier.trim()) &&
-      !/^((\+91[\s\-]?)?[6-9]\d{9})$/.test(values.identifier.trim())
+      !/^((\+91[\s-]?)?[6-9]\d{9})$/.test(values.identifier.trim())
     ) {
       errs.identifier = "Enter a valid email or Indian phone number.";
     }
