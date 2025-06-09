@@ -545,6 +545,9 @@ function CityFixHubContainer() {
   const [photoURL, setPhotoURL] = useState(""); // for UI preview
   const [location, setLocation] = useState({ lat: null, lng: null });
   const [locationStatus, setLocationStatus] = useState(""); // for feedback
+  // Reverse geocoding state
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const [addressFetchError, setAddressFetchError] = useState(null);
 
   // UI/toast/report state
   const [toast, setToast] = useState(null);
@@ -645,6 +648,9 @@ function CityFixHubContainer() {
       return;
     }
     setLocationStatus("Loading...");
+    // Reset address state before fetching new location
+    setIsFetchingAddress(false);
+    setAddressFetchError(null);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocation({
@@ -652,6 +658,7 @@ function CityFixHubContainer() {
           lng: pos.coords.longitude,
         });
         setLocationStatus("Captured!");
+        // address will be auto-fetched by effect when location changes
       },
       (err) => {
         setLocationStatus("Failed");
@@ -670,6 +677,48 @@ function CityFixHubContainer() {
     }
   }, []); // Only once
 
+  // Reverse geocoding effect: whenever location changes to a valid one, fetch address
+  useEffect(() => {
+    async function fetchAddress(lat, lng) {
+      setIsFetchingAddress(true);
+      setAddressFetchError(null);
+      try {
+        // OpenStreetMap Nominatim (demo, usage policy allows limited public frontend use)
+        // https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=...&lon=...
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`;
+        const resp = await fetch(url, {
+          headers: {
+            "User-Agent": "CityFixHub/1.0 (+https://cityfix-hub.local)",
+            "Referer": window?.location?.origin ?? undefined,
+          }
+        });
+        if (!resp.ok) {
+          throw new Error("Failed to fetch address");
+        }
+        const data = await resp.json();
+        if (data.display_name) {
+          setAddress(data.display_name);
+        } else {
+          throw new Error("No address found for these coordinates.");
+        }
+        setIsFetchingAddress(false);
+        setAddressFetchError(null);
+      } catch (err) {
+        setIsFetchingAddress(false);
+        setAddressFetchError("Could not auto-capture address. Please edit or enter manually.");
+      }
+    }
+    // Only fire for a valid lat/lng, and if location just changed
+    if (location.lat && location.lng) {
+      // Only fetch if not already the current address for this location
+      fetchAddress(location.lat, location.lng);
+    }
+    // Optionally: clear error if location is reset
+    if (!location.lat || !location.lng) {
+      setAddressFetchError(null);
+      setIsFetchingAddress(false);
+    }
+  }, [location.lat, location.lng]);
   // PUBLIC_INTERFACE
   async function handleSubmit(e) {
     e.preventDefault();
@@ -945,36 +994,81 @@ function CityFixHubContainer() {
                     </span>
                   )}
                 </label>
-                <input
-                  id="address"
-                  name="address"
-                  type="text"
-                  autoComplete="street-address"
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  placeholder={
-                    location.lat && location.lng
-                      ? "You may override or refine the auto location…"
-                      : "Enter approximate address, landmark, or area"
-                  }
-                  required={!(location.lat && location.lng)}
-                  minLength={location.lat && location.lng ? 0 : 5}
-                  style={{
-                    background: "#151b37",
-                    color: "#fff",
-                    border: !(location.lat && location.lng) && !address.trim()
-                      ? "1.5px solid #ff8888"
-                      : "1.5px solid var(--secondary)",
-                    borderRadius: 6,
-                    padding: "8px 11px",
-                    fontSize: 15,
-                    fontWeight: 400,
-                    outline: !(location.lat && location.lng) && !address.trim()
-                      ? "2px solid #ff4444"
-                      : undefined,
-                    width: "100%",
-                  }}
-                />
+                <div style={{ width: "100%", position: "relative" }}>
+                  <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    autoComplete="street-address"
+                    value={address}
+                    onChange={(e) => setAddress(e.target.value)}
+                    placeholder={
+                      location.lat && location.lng
+                        ? "You may override or refine the auto location…"
+                        : "Enter approximate address, landmark, or area"
+                    }
+                    required={!(location.lat && location.lng)}
+                    minLength={location.lat && location.lng ? 0 : 5}
+                    style={{
+                      background: "#151b37",
+                      color: "#fff",
+                      border: !(location.lat && location.lng) && !address.trim()
+                        ? "1.5px solid #ff8888"
+                        : "1.5px solid var(--secondary)",
+                      borderRadius: 6,
+                      padding: "8px 11px",
+                      fontSize: 15,
+                      fontWeight: 400,
+                      outline: !(location.lat && location.lng) && !address.trim()
+                        ? "2px solid #ff4444"
+                        : undefined,
+                      width: "100%",
+                      // show progress spinner if fetching
+                      paddingRight: isFetchingAddress ? 36 : 11,
+                      boxSizing: "border-box",
+                    }}
+                  />
+                  {isFetchingAddress && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        top: 9,
+                        right: 10,
+                        width: 18,
+                        height: 18,
+                        display: "inline-block"
+                      }}
+                      title="Looking up address from location…"
+                      aria-label="Address loading…"
+                    >
+                      <svg width={18} height={18} viewBox="0 0 50 50">
+                        <circle
+                          cx="25" cy="25" r="20"
+                          fill="none"
+                          stroke="#aaffec"
+                          strokeWidth="6"
+                          strokeDasharray="90"
+                          strokeDashoffset="0"
+                        >
+                          <animateTransform
+                            attributeName="transform"
+                            type="rotate"
+                            from="0 25 25"
+                            to="360 25 25"
+                            dur="0.7s"
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+                      </svg>
+                    </span>
+                  )}
+                </div>
+                {/* Feedback for geocoding */}
+                {addressFetchError && (
+                  <span style={{ color: "#ff5555", fontSize: 13, marginTop: 3 }}>
+                    {addressFetchError}
+                  </span>
+                )}
                 {/* Instruction for user clarity */}
                 {!(location.lat && location.lng) && (
                   <span style={{ color: "#ff8888", fontSize: 13, marginTop: 2 }}>

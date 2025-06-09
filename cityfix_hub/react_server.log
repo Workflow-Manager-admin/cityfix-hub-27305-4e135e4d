@@ -2,9 +2,9 @@
 > react-kavia@0.1.0 start
 > react-scripts start
 
-(node:50687) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:64724) [DEP_WEBPACK_DEV_SERVER_ON_AFTER_SETUP_MIDDLEWARE] DeprecationWarning: 'onAfterSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 (Use `node --trace-deprecation ...` to show where the warning was created)
-(node:50687) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
+(node:64724) [DEP_WEBPACK_DEV_SERVER_ON_BEFORE_SETUP_MIDDLEWARE] DeprecationWarning: 'onBeforeSetupMiddleware' option is deprecated. Please use the 'setupMiddlewares' option.
 Starting the development server...
 
 Compiled successfully!
@@ -23,84 +23,8 @@ Compiled with warnings.
 
 [eslint] 
 src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 519:10:  'address' is assigned a value but never used                                                                                          no-unused-vars
-  Line 519:19:  'setAddress' is assigned a value but never used                                                                                       no-unused-vars
-  Line 644:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-Search for the keywords to learn more about each warning.
-To ignore, add // eslint-disable-next-line to the line before.
-
-WARNING in [eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 519:10:  'address' is assigned a value but never used                                                                                          no-unused-vars
-  Line 519:19:  'setAddress' is assigned a value but never used                                                                                       no-unused-vars
-  Line 644:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-webpack compiled with 1 warning
-Compiling...
-Compiled with warnings.
-
-[eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 519:10:  'address' is assigned a value but never used                                                                                          no-unused-vars
-  Line 519:19:  'setAddress' is assigned a value but never used                                                                                       no-unused-vars
-  Line 647:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-Search for the keywords to learn more about each warning.
-To ignore, add // eslint-disable-next-line to the line before.
-
-WARNING in [eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 519:10:  'address' is assigned a value but never used                                                                                          no-unused-vars
-  Line 519:19:  'setAddress' is assigned a value but never used                                                                                       no-unused-vars
-  Line 647:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-webpack compiled with 1 warning
-Compiling...
-Compiled with warnings.
-
-[eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 647:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-Search for the keywords to learn more about each warning.
-To ignore, add // eslint-disable-next-line to the line before.
-
-WARNING in [eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 647:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-webpack compiled with 1 warning
-Compiling...
-Compiled with warnings.
-
-[eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 647:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-Search for the keywords to learn more about each warning.
-To ignore, add // eslint-disable-next-line to the line before.
-
-WARNING in [eslint] 
-src/CityFixHubContainer.js
-  Line 455:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 647:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
-
-webpack compiled with 1 warning
-Compiling...
-Compiled with warnings.
-
-[eslint] 
-src/CityFixHubContainer.js
   Line 479:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 671:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 678:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
 
 Search for the keywords to learn more about each warning.
 To ignore, add // eslint-disable-next-line to the line before.
@@ -108,6 +32,6 @@ To ignore, add // eslint-disable-next-line to the line before.
 WARNING in [eslint] 
 src/CityFixHubContainer.js
   Line 479:10:  'LoginModal' is defined but never used                                                                                                no-unused-vars
-  Line 671:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
+  Line 678:6:   React Hook useEffect has missing dependencies: 'location.lat' and 'location.lng'. Either include them or remove the dependency array  react-hooks/exhaustive-deps
 
 webpack compiled with 1 warning
