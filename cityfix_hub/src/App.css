@@ -3,10 +3,18 @@
   --secondary: #0000ff;
   --accent: #00ff00;
   --base-light: #00ffff;
-  --base-dark: #00008b;
+  --base-dark: #000015;
   --text-color: #ffffff;
   --text-secondary: rgba(255, 255, 255, 0.7);
   --border-color: rgba(255, 255, 255, 0.1);
+
+  --card-bg: #171c2b;
+  --focus-outline: #00ff00;
+  --error: #ff5555;
+  --banner-bg: #14203c;
+  --box-shadow-hi: 0 8px 32px #0008, 0 2px 8px #0116;
+  --transition-short: 0.16s cubic-bezier(.52,.04,.29,.96);
+  --transition-med: 0.33s cubic-bezier(.48,.16,.25,1);
 }
 
 body {
@@ -16,12 +24,24 @@ body {
   color: var(--text-color);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  /* Nice fade-in app load */
+  animation: fadein-body .5s;
+}
+@keyframes fadein-body {
+  from { opacity: 0;}
+  to { opacity: 1;}
 }
 
 .app {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  background: var(--base-dark);
+  animation: fadein-app 0.55s cubic-bezier(.48,.6,.20,.91);
+}
+@keyframes fadein-app {
+  from { opacity:0; transform: translateY(12px);}
+  to { opacity:1; transform: none;}
 }
 
 .navbar {
@@ -36,6 +56,9 @@ body {
   width: 100%;
   box-sizing: border-box;
   z-index: 100;
+  backdrop-filter: blur(4px) saturate(150%);
+  transition: background var(--transition-short), box-shadow var(--transition-short);
+  box-shadow: 0 2px 13px #0002;
 }
 
 /* Nav container override for centered site name and right-aligned btns */
@@ -130,56 +153,196 @@ body {
 }
 
 .btn {
-  background-color: var(--base-light);
-  color: white;
+  background: var(--secondary);
+  color: #fff;
   border: none;
-  border-radius: 4px;
+  border-radius: 7px;
   padding: 10px 20px;
   font-size: 1rem;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: 
+    background var(--transition-short), 
+    color var(--transition-short), 
+    box-shadow var(--transition-short),
+    transform .12s;
+  box-shadow: 0 1.5px 3px #0002;
+  outline: none;
+  position: relative;
+  z-index: 0;
 }
 
-.btn:hover {
-  background-color: #7691ff;
+.btn:focus-visible {
+  outline: 2.5px solid var(--focus-outline);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2.5px #00ff0050;
+}
+.btn:hover, .btn:active {
+  background: linear-gradient(98deg,#3550f8 50%, var(--secondary) 100%);
+  color: #fff;
+  transform: translateY(-2px) scale(1.025);
+  box-shadow: 0 6px 24px #0001, 0 2px 8px #0112;
+}
+.btn:disabled, .btn[aria-disabled="true"] {
+  background: #858eda !important;
+  color: #ddd !important;
+  cursor: not-allowed;
+  opacity: 0.7;
+  filter: grayscale(.18);
+  transform: none;
 }
 
+/* Large button variant */
 .btn-large {
-  padding: 12px 24px;
-  font-size: 1.1rem;
+  padding: 12px 26px;
+  font-size: 1.12rem;
 }
 
-/* --- CityFixHub Extension Styles --- */
-.cityfix-hub-app {
-  background: #101426;
+input, textarea, select, .user-signup-wrapper input, .user-signup-wrapper textarea {
+  background: #181d27;
+  color: #fff;
+  border: 1.5px solid var(--secondary);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 1rem;
+  font-weight: 400;
+  box-sizing: border-box;
+  outline: none;
+  transition: 
+    border 0.16s cubic-bezier(.52,.04,.29,.96), 
+    box-shadow 0.2s;
 }
+input:focus, textarea:focus, select:focus {
+  border: 1.5px solid var(--accent);
+  box-shadow: 0 0 0 2px #00ff0060;
+  outline: none;
+}
+input:invalid, textarea:invalid, select:invalid {
+  border: 1.5px solid #ff8888;
+  box-shadow: 0 0 0 1.5px #ff444488;
+}
+
+input[type="file"] {
+  background: transparent !important;
+  color: #bbb !important;
+  border: none !important;
+  font-size: 15px;
+  outline: none;
+  box-shadow: none;
+  padding: 4px 1px !important;
+}
+
+::-webkit-input-placeholder { color: #ccc; opacity: 1; }
+::-moz-placeholder { color: #ccc; opacity: 1; }
+:-ms-input-placeholder { color: #ccc; opacity: 1; }
+::placeholder { color: #ccc; opacity: 1; }
+
+/* Card animation and feedback */
 .cityfix-card {
-  transition: box-shadow 0.13s;
+  transition: 
+    box-shadow var(--transition-med), 
+    transform var(--transition-short),
+    border-color 0.22s cubic-bezier(.51, .63, .11, .92);
+  background: var(--card-bg);
+  border-radius: 14px;
+  box-shadow: 0 2px 10px #0019, 0 0.5px 3px #0124;
+  border: 2px solid transparent;
+  z-index: 1;
+  position: relative;
 }
-.cityfix-card:hover {
-  box-shadow: 0 3px 15px #0050d466;
+.cityfix-card:hover, .cityfix-card:focus-within {
+  box-shadow: 0 6px 35px #00808b33, 0 6px 68px #00ff0177;
+  border-color: var(--accent);
+  transform: translateY(-4px) scale(1.018);
+}
+
+/* Banner/Toast/Notification styles & entrance/exit */
+.cityfix-toast {
+  animation: toast-fadein 0.28s cubic-bezier(.27,.92,.41,.95);
+  opacity: 0.93;
+  transition: opacity .17s, box-shadow .19s, transform .17s;
+  box-shadow: 0 6px 22px #0038, 0 2px 10px #0125;
+  backdrop-filter: blur(6px) saturate(140%);
+  border-radius: 10px;
+  font-family: inherit;
+}
+@keyframes toast-fadein {
+  from { opacity: 0; transform: translateY(-40px);}
+  to { opacity: .93; transform: none;}
 }
 .cityfix-toast.success {
   border-left: 5px solid var(--accent);
+  background: linear-gradient(98deg, #123817 40%, #264828 80%);
 }
 .cityfix-toast.error {
   border-left: 5px solid #ff3f46;
+  background: linear-gradient(90deg, #370011 40%, #550f20 100%);
 }
+
+/* Loading Spinner Animation (SVG fallback, globally) */
+.spinner {
+  display: inline-block;
+  vertical-align: middle;
+  width: 22px;
+  height: 22px;
+}
+.spinner svg {
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  100% { transform: rotate(360deg);}
+}
+
+/* Smooth slide/fade form transitions */
+@keyframes form-fadein {
+  from { opacity: 0; transform: translateY(24px);}
+  to { opacity: 1; transform: none;}
+}
+
+/* Utility class for animating form/modal entrances */
+.form-animate-in {
+  animation: form-fadein 0.37s cubic-bezier(.4,.9,.39,1.03);
+}
+.form-animate-pop {
+  animation: toast-fadein 0.28s cubic-bezier(.27,.92,.41,.95);
+}
+
+.user-signup-wrapper {
+  animation: form-fadein .32s cubic-bezier(.46,.9,.35,1.04);
+  box-shadow: 0 4px 24px #0007;
+  border-radius: 11px;
+  margin: 24px auto;
+}
+
+/* Grid responsive utilities for reports grid and cards */
 .cityfix-grid {
   width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 22px;
+  animation: fadein-app 0.3s;
+}
+@media (max-width: 990px) {
+  .container { max-width: 99vw !important;}
+  .cityfix-card {
+    min-width: 160px;
+    padding: 11px;
+    font-size: 97%;
+  }
 }
 @media (max-width: 740px) {
   .container {
     padding-left: 6px;
     padding-right: 6px;
+    max-width: 99vw !important;
   }
   .cityfix-card {
-    min-width: 180px;
-    padding: 12px;
+    min-width: 120px;
+    padding: 11px;
+    font-size: 95%;
   }
-  .cityfix-grid {
-    gap: 15px;
+  .cityfix-grid, .user-signup-wrapper {
+    gap: 13px;
   }
   .navbar, .navbar .container {
     min-height: 46px !important;
@@ -189,18 +352,20 @@ body {
 @media (max-width: 480px) {
   .cityfix-card {
     padding: 8px;
-    font-size: 14px;
+    font-size: 13.1px;
+    border-radius: 8px;
   }
   .cityfix-toast {
     right: 3vw !important;
-    padding: 10px 8px !important;
-    min-width: 120px;
-    font-size: 13px;
+    padding: 10px 7px !important;
+    min-width: 108px;
+    font-size: 12.2px;
+    border-radius: 7px;
   }
   .user-signup-wrapper {
     padding-left: 4px !important;
     padding-right: 4px !important;
-    border-radius: 5px !important;
+    border-radius: 6px !important;
     max-width: 98vw !important;
     font-size: 15px;
   }
@@ -208,4 +373,29 @@ body {
   .user-signup-wrapper button {
     font-size: 15px !important;
   }
+  .cityfix-grid {
+    grid-template-columns: 1fr !important;
+    gap: 8px;
+  }
 }
+
+/* Add subtle focus ring to cards & container on keyboard nav */
+.cityfix-card:focus-within {
+  outline: 2.5px solid var(--focus-outline);
+  outline-offset: 3px;
+}
+
+/* Navbar logo interactive accent */
+.logo {
+  transition: color .17s, text-shadow .13s;
+}
+.logo-symbol {
+  color: var(--accent);
+  text-shadow: 0 2px 8px #00ff0055;
+  will-change: filter;
+  transition: filter 0.2s;
+}
+.logo-symbol:hover {
+  filter: brightness(1.8) drop-shadow(0 2px 8px #00ff0056);
+}
+
