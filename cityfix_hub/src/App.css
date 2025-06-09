@@ -157,4 +157,15 @@ body {
     min-width: 120px;
     font-size: 13px;
   }
+  .user-signup-wrapper {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+    border-radius: 5px !important;
+    max-width: 98vw !important;
+    font-size: 15px;
+  }
+  .user-signup-wrapper input,
+  .user-signup-wrapper button {
+    font-size: 15px !important;
+  }
 }
