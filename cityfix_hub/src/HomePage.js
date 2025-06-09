@@ -1,7 +1,6 @@
 import React from "react";
 import styles from "./HomePage.module.css";
-import NavigationBar from "./NavigationBar";
-
+import { Link } from "react-router-dom";
 // PUBLIC_INTERFACE
 function HomePage() {
   // Feature icons and feature content as before...
@@ -59,7 +58,6 @@ function HomePage() {
 
   return (
     <div className={styles.cfHome}>
-      <NavigationBar />
       {/* The main content, visually shifted down for fixed nav */}
       <main className={styles.mainPanel}>
         <section className={styles.heroSection}>
@@ -71,8 +69,9 @@ function HomePage() {
               CityFix Hub empowers you to report and track civic problems in your city. 
               Join us in making urban spaces safer, cleaner, and better—one report at a time.
             </p>
-            <a
-              href="/app"
+            {/* Use react-router-dom Link for native SPA navigation */}
+            <Link
+              to="/app"
               className={styles.ctaBtn}
               role="button"
               tabIndex={0}
@@ -84,7 +83,7 @@ function HomePage() {
                   <path d="M6.5 4.5l6 6-6 6" stroke="#fff" strokeWidth="2.3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                 </svg>
               </span>
-            </a>
+            </Link>
             <div className={styles.missionStatement}>
               <span className={styles.missionAccent}>Better Cities Start With You.</span>
             </div>
