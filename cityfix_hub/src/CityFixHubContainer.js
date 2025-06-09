@@ -541,6 +541,10 @@ function CityFixHubContainer() {
   const [type, setType] = useState(""); // Issue type
   const [description, setDescription] = useState("");
   const [address, setAddress] = useState(""); // New: manual address field
+  // Keeps track of whether the user has manually edited the address after geocode
+  const [isManualAddressEdit, setIsManualAddressEdit] = useState(false);
+  // Stores the last geocoded address (to avoid unnecessary overwrite)
+  const lastGeocodedAddress = useRef("");
   const [photo, setPhoto] = useState(null);
   const [photoURL, setPhotoURL] = useState(""); // for UI preview
   const [location, setLocation] = useState({ lat: null, lng: null });
@@ -697,7 +701,16 @@ function CityFixHubContainer() {
         }
         const data = await resp.json();
         if (data.display_name) {
-          setAddress(data.display_name);
+          // Only overwrite address field if user hasn't manually edited since last geocode or address is empty
+          if (
+            !isManualAddressEdit ||
+            address.trim() === "" ||
+            address.trim() === lastGeocodedAddress.current
+          ) {
+            setAddress(data.display_name);
+            setIsManualAddressEdit(false);
+          }
+          lastGeocodedAddress.current = data.display_name;
         } else {
           throw new Error("No address found for these coordinates.");
         }
@@ -710,7 +723,6 @@ function CityFixHubContainer() {
     }
     // Only fire for a valid lat/lng, and if location just changed
     if (location.lat && location.lng) {
-      // Only fetch if not already the current address for this location
       fetchAddress(location.lat, location.lng);
     }
     // Optionally: clear error if location is reset
@@ -768,6 +780,8 @@ function CityFixHubContainer() {
     setLocation({ lat: null, lng: null });
     setLocationStatus("");
     setCameraFallback(!cameraSupported);
+    setIsManualAddressEdit(false);
+    lastGeocodedAddress.current = "";
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -1001,7 +1015,10 @@ function CityFixHubContainer() {
                     type="text"
                     autoComplete="street-address"
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      setIsManualAddressEdit(true);
+                    }}
                     placeholder={
                       location.lat && location.lng
                         ? "You may override or refine the auto location…"
