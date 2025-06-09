@@ -1,29 +1,31 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 
 /**
  * PUBLIC_INTERFACE
  * PhotoLocationCapture
- * Lets user select a photo (by upload or camera), triggers browser geolocation,
- * then auto-reverse-geocodes to fill a human-readable address by OpenStreetMap Nominatim.
- * Robustly handles errors and status, and delivers
- *   {photoFile, photoPreviewUrl, location, address}
- * to `onReady`.
+ * Lets user select a photo (by upload or camera), then:
+ *   1) Captures device geolocation programmatically.
+ *   2) Reverse-geocodes coordinates (OpenStreetMap Nominatim) to human-readable address.
+ *   3) Auto-fills address field/state and gives robust feedback/status/errors at each stage.
+ *   4) Calls `onReady({ photoFile, photoPreviewUrl, location, address })` when all is available.
  *
  * Props:
  *   onReady: ({ photoFile, photoPreviewUrl, location, address }) => void
  */
 function PhotoLocationCapture({ onReady }) {
+  // --- State ---
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [location, setLocation] = useState(null); // {lat, lng}
   const [address, setAddress] = useState(""); // human-readable
-  const [locationStatus, setLocationStatus] = useState("");
   const [locationPending, setLocationPending] = useState(false);
+  const [locationStatus, setLocationStatus] = useState(""); // user-facing status string
   const [geoError, setGeoError] = useState("");
   const [addressError, setAddressError] = useState("");
   const [isFetchingAddress, setIsFetchingAddress] = useState(false);
+  const lastSubmittedLocation = useRef(null);
 
-  // Request geolocation
+  // --- Utility: Geolocation capture with permission & HTTPS context handling ---
   function requestGeo() {
     return new Promise((resolve, reject) => {
       if (!window.navigator.geolocation) {
@@ -40,6 +42,7 @@ function PhotoLocationCapture({ onReady }) {
         reject("Geolocation only works over HTTPS or localhost.");
         return;
       }
+      setLocationStatus("Requesting device location…");
       window.navigator.geolocation.getCurrentPosition(
         pos => {
           resolve({
@@ -48,11 +51,13 @@ function PhotoLocationCapture({ onReady }) {
           });
         },
         err => {
-          let msg = "Could not get your location.";
-          if (err.code === 1) msg = "Permission denied. Please allow location in your browser.";
-          else if (err.code === 2) msg = "Location unavailable. Try again or enable GPS.";
-          else if (err.code === 3) msg = "Location request timed out.";
-          else if (err.message) msg = err.message;
+          let msg;
+          switch (err.code) {
+            case 1: msg = "Permission denied. Please allow location in your browser."; break;
+            case 2: msg = "Location unavailable. Try again or enable GPS."; break;
+            case 3: msg = "Location request timed out."; break;
+            default: msg = err.message || "Could not get your location.";
+          }
           reject(msg);
         },
         {
@@ -64,21 +69,21 @@ function PhotoLocationCapture({ onReady }) {
     });
   }
 
-  // Reverse geocode with OSM Nominatim for address
+  // --- Reverse geocode with OSM Nominatim for address ---
   async function fetchAddress(lat, lng) {
     setIsFetchingAddress(true);
     setAddress("");
     setAddressError("");
     try {
-      // Nominatim open API, be a good citizen!
+      // Nominatim open API, use best practices. Limit for heavy use!
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`;
       const resp = await fetch(url, {
         headers: {
-          "User-Agent": "CityFixHub/1.0 (https://cityfix-hub.local)",
+          "User-Agent": "CityFixHub/1.0 (+https://cityfix-hub.local)",
           "Referer": window?.location?.origin ?? undefined,
         }
       });
-      if (!resp.ok) throw new Error("Failed to fetch address.");
+      if (!resp.ok) throw new Error("Failed to fetch address (API error).");
       const data = await resp.json();
       if (data.display_name) {
         setAddress(data.display_name);
@@ -86,17 +91,17 @@ function PhotoLocationCapture({ onReady }) {
         setIsFetchingAddress(false);
         return data.display_name;
       } else {
-        throw new Error("No address found.");
+        throw new Error("No address found for these coordinates.");
       }
     } catch (err) {
-      setAddressError("Could not auto-capture address.");
+      setAddressError("Could not auto-capture address. Please enter manually.");
       setIsFetchingAddress(false);
       setAddress("");
       return "";
     }
   }
 
-  // Orchestrate location and address autofill
+  // --- Orchestrate location & geocoding after photo selection ---
   async function beginLocationAndAddress() {
     setGeoError("");
     setLocation(null);
@@ -104,7 +109,6 @@ function PhotoLocationCapture({ onReady }) {
     setAddressError("");
     setLocationStatus("Capturing your location… Please allow access.");
     setLocationPending(true);
-    setIsFetchingAddress(false);
 
     try {
       const geo = await requestGeo();
@@ -113,9 +117,11 @@ function PhotoLocationCapture({ onReady }) {
       setLocationStatus("");
       setAddress("");
       setIsFetchingAddress(true);
+      // Use reverse geocoding
       const addressText = await fetchAddress(geo.lat, geo.lng);
       setIsFetchingAddress(false);
 
+      // Callback if all succeeded
       if (onReady) {
         onReady({
           photoFile,
@@ -132,7 +138,7 @@ function PhotoLocationCapture({ onReady }) {
     }
   }
 
-  // Handle photo input; resets state, starts location/address autofill
+  // --- Handle photo input (auto-start location capture) ---
   function handlePhotoChange(e) {
     setGeoError("");
     setAddressError("");
@@ -150,7 +156,7 @@ function PhotoLocationCapture({ onReady }) {
     }
     setPhotoFile(file);
     setPhotoPreviewUrl(URL.createObjectURL(file));
-    // Auto-trigger location+address capture after photo selection
+    // Auto-trigger location & address capture after photo selection
     beginLocationAndAddress();
   }
 
@@ -175,7 +181,7 @@ function PhotoLocationCapture({ onReady }) {
     beginLocationAndAddress();
   }
 
-  // UI rendering
+  // --- UI rendering with clear status feedback and robust error handling ---
   return (
     <div
       className="photo-location-capture"
@@ -196,7 +202,12 @@ function PhotoLocationCapture({ onReady }) {
         <input
           type="file"
           accept="image/*"
-          style={{ color: "#fff", width: 156, background: "#11192e", borderRadius: 6 }}
+          style={{
+            color: "#fff",
+            width: 156,
+            background: "#11192e",
+            borderRadius: 6,
+          }}
           onChange={handlePhotoChange}
           disabled={locationPending || isFetchingAddress}
           capture="environment"
@@ -236,7 +247,7 @@ function PhotoLocationCapture({ onReady }) {
         )}
       </div>
 
-      {/* Show geolocation/address status */}
+      {/* Status: Location & Address Feedback */}
       {photoFile && (
         <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 7 }}>
           {locationPending ? (
@@ -256,9 +267,7 @@ function PhotoLocationCapture({ onReady }) {
               }}
               aria-live="polite"
             >
-              <span role="img" aria-label="progress" style={{ fontSize: 20 }}>
-                ⏳
-              </span>
+              <span role="img" aria-label="progress" style={{ fontSize: 20 }}>⏳</span>
               {locationStatus || "Capturing your location… Please allow access."}
             </div>
           ) : geoError ? (
@@ -326,7 +335,7 @@ function PhotoLocationCapture({ onReady }) {
                 <span role="img" aria-label="location">📍</span>
                 Captured:{" "}
                 <b>
-                  {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                  {location.lat?.toFixed(6)}, {location.lng?.toFixed(6)}
                 </b>
               </div>
               {address && (
