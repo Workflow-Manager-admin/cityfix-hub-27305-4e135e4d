@@ -135,6 +135,7 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
     location,
     status,
     createdAt,
+    address, // new
   } = report;
 
   // Only show valid map for proper coordinates
@@ -191,8 +192,31 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
           <span style={{ color: "#444", fontSize: 80 }}>📷</span>
         )}
       </div>
+      {/* Address, if present */}
+      {address && (
+        <div
+          style={{
+            margin: "4px 0 0 0",
+            padding: "5.5px 10px 5px 7px",
+            background: "#143c2a",
+            color: "#c3ffe2",
+            borderRadius: 5,
+            fontSize: 14.7,
+            fontWeight: 500,
+            letterSpacing: 0.14,
+            display: "flex",
+            alignItems: "center",
+            gap: 7,
+            wordBreak: "break-word",
+            flexWrap: "wrap"
+          }}
+        >
+          <span role="img" aria-label="address" style={{ fontSize: 17 }}>🏠</span>
+          <span style={{ flex: 1 }}>{address}</span>
+        </div>
+      )}
       {/* Location badge with clickable coordinates and map */}
-      <div style={{ width: "100%", margin: "2px 0 2px 0" }}>
+      <div style={{ width: "100%", margin: address ? "2px 0 0 0" : "2px 0 2px 0" }}>
         <div
           style={{
             background: "#131834",
@@ -516,6 +540,7 @@ function CityFixHubContainer() {
   // Form state
   const [type, setType] = useState(""); // Issue type
   const [description, setDescription] = useState("");
+  const [address, setAddress] = useState(""); // New: manual address field
   const [photo, setPhoto] = useState(null);
   const [photoURL, setPhotoURL] = useState(""); // for UI preview
   const [location, setLocation] = useState({ lat: null, lng: null });
@@ -555,6 +580,7 @@ function CityFixHubContainer() {
         id: "101",
         type: "Pothole",
         description: "A big pothole on Main St.",
+        address: "53 Main Street, Downtown, New York", // Demo
         photo: "",
         location: { lat: 40.7128, lng: -74.0060 },
         status: "Reported",
@@ -564,6 +590,7 @@ function CityFixHubContainer() {
         id: "102",
         type: "Illegal Waste Dump",
         description: "Improper garbage dumped near park.",
+        address: "Near Greenwood Park, Brooklyn", // Demo
         photo: "",
         location: { lat: 40.7115, lng: -74.0055 },
         status: "In Progress",
@@ -573,6 +600,7 @@ function CityFixHubContainer() {
         id: "103",
         type: "Vandalism",
         description: "Spray paint on community center wall.",
+        address: "", // Demo (no address)
         photo: "",
         location: { lat: 40.7101, lng: -74.0040 },
         status: "Fixed",
@@ -645,8 +673,17 @@ function CityFixHubContainer() {
   // PUBLIC_INTERFACE
   async function handleSubmit(e) {
     e.preventDefault();
-    if (!type || !description || !location.lat || !location.lng) {
-      setToast("Fill all fields and capture location.", "error");
+
+    // Address requirement: If no lat/lng, address is mandatory, else optional
+    const isLocationPresent = !!(location.lat && location.lng);
+    const trimmedAddress = address.trim();
+    if (!type || !description || (!isLocationPresent && !trimmedAddress)) {
+      setToast(
+        !type || !description
+          ? "Fill all fields."
+          : "Address is required if location is not captured.",
+        "error"
+      );
       setToastType("error");
       return;
     }
@@ -657,12 +694,12 @@ function CityFixHubContainer() {
       // TODO: Replace with actual Cloudinary upload/API call
       uploadedPhotoUrl = photoURL;
     }
-    // Save report to server (placeholder - replace with Axios POST)
     const fakeId = (100 + Math.floor(Math.random() * 100000)).toString();
     const newReport = {
       id: fakeId,
       type,
       description,
+      address: trimmedAddress || "", // Save typed address even if optional
       photo: uploadedPhotoUrl,
       location,
       status: "Reported",
@@ -673,9 +710,10 @@ function CityFixHubContainer() {
     setToastType("success");
     setIsSubmitting(false);
 
-    // Reset form
+    // Reset form fields
     setType("");
     setDescription("");
+    setAddress("");
     setPhoto(null);
     setPhotoURL("");
     setLocation({ lat: null, lng: null });
@@ -894,6 +932,60 @@ function CityFixHubContainer() {
                     resize: "vertical",
                   }}
                 />
+              </div>
+              {/* Address input */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                <label htmlFor="address" style={{ fontWeight: 500 }}>
+                  Address
+                  {!location.lat || !location.lng ? (
+                    <span style={{ color: "var(--accent)", marginLeft: 3 }}>*</span>
+                  ) : (
+                    <span style={{ color: "#66ff7f", fontWeight: 400, fontSize: 13, marginLeft: 3 }}>
+                      (optional, or edit to override)
+                    </span>
+                  )}
+                </label>
+                <input
+                  id="address"
+                  name="address"
+                  type="text"
+                  autoComplete="street-address"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder={
+                    location.lat && location.lng
+                      ? "You may override or refine the auto location…"
+                      : "Enter approximate address, landmark, or area"
+                  }
+                  required={!(location.lat && location.lng)}
+                  minLength={location.lat && location.lng ? 0 : 5}
+                  style={{
+                    background: "#151b37",
+                    color: "#fff",
+                    border: !(location.lat && location.lng) && !address.trim()
+                      ? "1.5px solid #ff8888"
+                      : "1.5px solid var(--secondary)",
+                    borderRadius: 6,
+                    padding: "8px 11px",
+                    fontSize: 15,
+                    fontWeight: 400,
+                    outline: !(location.lat && location.lng) && !address.trim()
+                      ? "2px solid #ff4444"
+                      : undefined,
+                    width: "100%",
+                  }}
+                />
+                {/* Instruction for user clarity */}
+                {!(location.lat && location.lng) && (
+                  <span style={{ color: "#ff8888", fontSize: 13, marginTop: 2 }}>
+                    Required if location cannot be auto-captured.
+                  </span>
+                )}
+                {(location.lat && location.lng) && (
+                  <span style={{ color: "#aaffec", fontSize: 12.5, marginTop: 2 }}>
+                    For greater accuracy, you may refine this street/area/address (optional).
+                  </span>
+                )}
               </div>
               {/* Photo Upload or Live Camera */}
               <div>
