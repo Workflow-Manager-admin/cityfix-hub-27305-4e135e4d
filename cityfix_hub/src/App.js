@@ -44,9 +44,9 @@ function App() {
   }
 
   // Fallback: just render HomePage (minimal projects or if router not present)
+  // Do NOT render NavigationBar, which uses useLocation and expects Router context!
   return (
     <div>
-      <NavigationBar />
       <HomePage />
     </div>
   );
