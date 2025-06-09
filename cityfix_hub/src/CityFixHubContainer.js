@@ -103,35 +103,35 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
           <img
             src={photo}
             alt="Issue"
-            style={{height: 130, width: "auto", maxWidth: "100%", objectFit: "cover"}}
+            style={{ height: 130, width: "auto", maxWidth: "100%", objectFit: "cover" }}
           />
         ) : (
           <span style={{ color: "#444", fontSize: 80 }}>📷</span>
         )}
       </div>
       <div style={{ fontWeight: 600, color: "var(--primary)" }}>{type}</div>
-      <div style={{ color: "var(--text-secondary)", fontSize: 15 }}>{description || <span style={{color:'#555'}}>No description</span>}</div>
+      <div style={{ color: "var(--text-secondary)", fontSize: 15 }}>{description || <span style={{ color: '#555' }}>No description</span>}</div>
       <div style={{ color: "#b2f3b2", fontSize: 13 }}>
         <span role="img" aria-label="location">📍</span>
         {location?.lat && location?.lng
           ? ` ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}`
           : " Location N/A"}
       </div>
-      <div style={{ marginTop: 2, fontSize: 13, color: "#aaa"}}>
+      <div style={{ marginTop: 2, fontSize: 13, color: "#aaa" }}>
         <span>Status: </span>
         <b style={{
           color:
             status === "Fixed"
               ? "var(--accent)"
               : status === "In Progress"
-              ? "#ffe400"
-              : "#7fdbff",
+                ? "#ffe400"
+                : "#7fdbff",
         }}>
           {status}
         </b>
       </div>
       {createdAt && (
-        <span style={{color:'#888', fontSize:12, marginTop:-7}}>
+        <span style={{ color: '#888', fontSize: 12, marginTop: -7 }}>
           {new Date(createdAt).toLocaleString()}
         </span>
       )}
@@ -148,8 +148,8 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
                   background: opt === "Fixed"
                     ? "var(--accent)"
                     : opt === "In Progress"
-                    ? "var(--secondary)"
-                    : "#7fdbff",
+                      ? "var(--secondary)"
+                      : "#7fdbff",
                   color: "#222",
                 }}
                 onClick={() => onStatusChange && onStatusChange(id, opt)}
@@ -164,33 +164,191 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
   );
 }
 
+// Camera component for live capture (fallback-aware)
+function CameraCapture({ onCapture, fallbackToInput, onFallback, previewSrc, disabled }) {
+  const videoRef = useRef(null);
+  const streamRef = useRef(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const [error, setError] = useState("");
+
+  // Try to start camera
+  async function startCamera() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      onFallback();
+      return;
+    }
+    try {
+      setError("");
+      setIsCapturing(true);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: "environment" },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err) {
+      setError("Could not access camera: " + err.message);
+      setIsCapturing(false);
+      onFallback();
+    }
+  }
+
+  // Take snapshot from video
+  const handleSnap = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    const canvas = document.createElement("canvas");
+    canvas.width = video.videoWidth > 0 ? video.videoWidth : 320;
+    canvas.height = video.videoHeight > 0 ? video.videoHeight : 240;
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Convert to a blob and then create File object for preview and submit
+    canvas.toBlob((blob) => {
+      if (blob) {
+        const file = new File([blob], "camera-capture.jpg", { type: "image/jpeg" });
+        onCapture(file, URL.createObjectURL(blob));
+        stopCamera();
+      }
+    }, "image/jpeg", 0.93);
+  };
+
+  // Stop camera and cleanup
+  const stopCamera = () => {
+    setIsCapturing(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.srcObject = null;
+    }
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(t => t.stop());
+      streamRef.current = null;
+    }
+  };
+
+  // Cleanup on unmount
+  useEffect(() => () => stopCamera(), []);
+
+  if (fallbackToInput) return null;
+
+  if (!isCapturing) {
+    return (
+      <button
+        className="btn"
+        style={{ fontSize: 15, background: "var(--secondary)", color: "#fff", fontWeight: 500 }}
+        type="button"
+        disabled={disabled}
+        aria-label="Open camera to take photo"
+        onClick={startCamera}
+      >
+        📷 Take Photo
+      </button>
+    );
+  }
+
+  // Show live video preview and "Snap" button
+  return (
+    <div style={{
+      display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 9, marginTop: 6,
+    }}>
+      {error && <span style={{ color: "#ff5555", fontSize: 13 }}>{error}</span>}
+      <video
+        ref={videoRef}
+        style={{
+          borderRadius: 8,
+          width: 210,
+          height: 160,
+          background: "#080b1d",
+          objectFit: "cover",
+          border: "1.5px solid #222"
+        }}
+        autoPlay
+        muted
+        playsInline
+      />
+      <div style={{ display: "flex", gap: 9 }}>
+        <button
+          type="button"
+          className="btn"
+          style={{
+            padding: "7px 15px",
+            background: "var(--accent)",
+            color: "#222",
+            fontWeight: 600,
+          }}
+          onClick={handleSnap}
+        >
+          Snap
+        </button>
+        <button
+          type="button"
+          className="btn"
+          style={{
+            padding: "7px 15px",
+            background: "#999",
+            color: "#222",
+            fontWeight: 600,
+          }}
+          onClick={() => {
+            stopCamera();
+            onFallback();
+          }}
+        >
+          Cancel
+        </button>
+      </div>
+    </div>
+  );
+}
+
 // PUBLIC_INTERFACE
 function CityFixHubContainer() {
-  // State for form
-  const [type, setType] = useState(""); // issue type
+  // Form state
+  const [type, setType] = useState(""); // Issue type
   const [description, setDescription] = useState("");
   const [photo, setPhoto] = useState(null);
   const [photoURL, setPhotoURL] = useState(""); // for UI preview
   const [location, setLocation] = useState({ lat: null, lng: null });
   const [locationStatus, setLocationStatus] = useState(""); // for feedback
 
-  // State for UI/toasts and issues
+  // UI/toast/report state
   const [toast, setToast] = useState(null);
   const [toastType, setToastType] = useState("success");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reports, setReports] = useState([]);
   const [isAdmin, setIsAdmin] = useState(false); // For demo, could be hooked up to auth
-  
-  // Mock: Load some issues initially (would be replaced with API call)
+
+  // Camera integration state
+  const [cameraFallback, setCameraFallback] = useState(false); // fallback if getUserMedia unavailable
+  const [cameraSupported, setCameraSupported] = useState(false);
+
+  // File input ref for fallback and reset
+  const fileInputRef = useRef();
+
+  // Detect camera (getUserMedia) support on mount
   useEffect(() => {
-    // Placeholder for API
+    if (
+      navigator.mediaDevices &&
+      typeof navigator.mediaDevices.getUserMedia === "function"
+    ) {
+      setCameraSupported(true);
+    } else {
+      setCameraSupported(false);
+      setCameraFallback(true);
+    }
+  }, []);
+
+  // Load demo reports (placeholder for actual API)
+  useEffect(() => {
     setReports([
       {
         id: "101",
         type: "Pothole",
         description: "A big pothole on Main St.",
         photo: "",
-        location: {lat: 40.7128, lng: -74.0060},
+        location: { lat: 40.7128, lng: -74.0060 },
         status: "Reported",
         createdAt: Date.now() - 3600000,
       },
@@ -223,8 +381,7 @@ function CityFixHubContainer() {
     }
   }, [toast]);
 
-  // Handle file select & preview
-  const fileInputRef = useRef();
+  // PUBLIC_INTERFACE
   function handlePhotoChange(e) {
     const file = e.target.files[0];
     setPhoto(file);
@@ -233,6 +390,14 @@ function CityFixHubContainer() {
     } else {
       setPhotoURL("");
     }
+  }
+
+  function handlePhotoCapture(file, url) {
+    setPhoto(file);
+    setPhotoURL(url);
+    setCameraFallback(true); // auto-exit camera mode on capture
+    // reset fileInput if switching from file to camera
+    if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   // Geolocation (browser API)
@@ -260,6 +425,15 @@ function CityFixHubContainer() {
     );
   }
 
+  // Auto geotag on form mount for convenience (optional: comment out if undesired)
+  useEffect(() => {
+    if ("geolocation" in navigator && !location.lat && !location.lng) {
+      // Wait ~500ms for UI to settle for a less jarring prompt
+      const t = setTimeout(() => handleGetLocation(), 600);
+      return () => clearTimeout(t);
+    }
+  }, []); // Only once
+
   // PUBLIC_INTERFACE
   async function handleSubmit(e) {
     e.preventDefault();
@@ -275,7 +449,6 @@ function CityFixHubContainer() {
       // TODO: Replace with actual Cloudinary upload/API call
       uploadedPhotoUrl = photoURL;
     }
-
     // Save report to server (placeholder - replace with Axios POST)
     const fakeId = (100 + Math.floor(Math.random() * 100000)).toString();
     const newReport = {
@@ -291,7 +464,7 @@ function CityFixHubContainer() {
     setToast("Issue reported successfully!");
     setToastType("success");
     setIsSubmitting(false);
-    
+
     // Reset form
     setType("");
     setDescription("");
@@ -299,6 +472,7 @@ function CityFixHubContainer() {
     setPhotoURL("");
     setLocation({ lat: null, lng: null });
     setLocationStatus("");
+    setCameraFallback(!cameraSupported);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
@@ -315,8 +489,9 @@ function CityFixHubContainer() {
     setToastType("success");
   }
 
+  // Render
   return (
-    <div className="app cityfix-hub-app" style={{background:"#101426", minHeight:"100vh"}}>
+    <div className="app cityfix-hub-app" style={{ background: "#101426", minHeight: "100vh" }}>
       <nav
         className="navbar"
         style={{
@@ -325,8 +500,8 @@ function CityFixHubContainer() {
           color: "var(--primary)",
         }}
       >
-        <div className="container" style={{display:"flex", alignItems:"center", minHeight: 56}}>
-          <div className="logo" style={{fontSize: "1.32rem", letterSpacing: 0.8, color:"#fff"}}>
+        <div className="container" style={{ display: "flex", alignItems: "center", minHeight: 56 }}>
+          <div className="logo" style={{ fontSize: "1.32rem", letterSpacing: 0.8, color: "#fff" }}>
             <span
               className="logo-symbol"
               style={{
@@ -367,7 +542,7 @@ function CityFixHubContainer() {
           background: "#101426",
         }}
       >
-        <div className="container" style={{maxWidth: 960}}>
+        <div className="container" style={{ maxWidth: 960 }}>
           {/* Report Issue Form */}
           <section
             style={{
@@ -380,7 +555,7 @@ function CityFixHubContainer() {
             }}
             aria-labelledby="report-title"
           >
-            <h2 id="report-title" style={{ fontWeight: 700, fontSize: 22, margin: 0, color:'var(--primary)' }}>
+            <h2 id="report-title" style={{ fontWeight: 700, fontSize: 22, margin: 0, color: 'var(--primary)' }}>
               Report an Issue
             </h2>
             <form
@@ -396,7 +571,7 @@ function CityFixHubContainer() {
               {/* Type dropdown */}
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <label htmlFor="issue-type" style={{ fontWeight: 500 }}>
-                  Issue Type <span style={{color:"var(--accent)"}}>*</span>
+                  Issue Type <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <select
                   id="issue-type"
@@ -419,11 +594,11 @@ function CityFixHubContainer() {
                   )}
                 </select>
               </div>
-              
+
               {/* Description */}
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <label htmlFor="desc" style={{ fontWeight: 500 }}>
-                  Description <span style={{color:"var(--accent)"}}>*</span>
+                  Description <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <textarea
                   id="desc"
@@ -444,26 +619,63 @@ function CityFixHubContainer() {
                   }}
                 />
               </div>
-              {/* Photo Upload */}
+              {/* Photo Upload or Live Camera */}
               <div>
                 <label htmlFor="photo-upload" style={{ fontWeight: 500 }}>
                   Photo (optional)
                 </label>
-                <div style={{ display: "flex", alignItems: "center", gap: 13 }}>
-                  <input
-                    id="photo-upload"
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handlePhotoChange}
-                    style={{ color: "#fff", fontWeight: 400, width: 180 }}
-                  />
-                  {photoURL && (
+                <div style={{ display: "flex", alignItems: "center", gap: 13, flexWrap: "wrap" }}>
+                  {/* Camera preferred (mobile-friendly): Only show BOTH file and camera Fallback, not both live! */}
+                  {cameraSupported && !cameraFallback && (
+                    <CameraCapture
+                      onCapture={handlePhotoCapture}
+                      fallbackToInput={cameraFallback}
+                      onFallback={() => setCameraFallback(true)}
+                      previewSrc={photoURL}
+                      disabled={!!photo}
+                    />
+                  )}
+                  {/* If fallback to file input */}
+                  {(!cameraSupported || cameraFallback) && (
+                    <React.Fragment>
+                      <input
+                        id="photo-upload"
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        style={{ color: "#fff", fontWeight: 400, width: 180 }}
+                        capture="environment"
+                        // ^ for mobile, hints to use rear camera (supported on most mobile browsers)
+                      />
+                      <button
+                        type="button"
+                        className="btn"
+                        style={{ fontSize: 13, background: "#555", color: "#fff", marginLeft: 7, padding: "4px 9px" }}
+                        onClick={() => {
+                          setCameraFallback(false);
+                          setPhoto(null);
+                          setPhotoURL("");
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                        disabled={!cameraSupported}
+                        aria-label="Switch to live camera"
+                        title={
+                          cameraSupported
+                            ? "Switch to live camera"
+                            : "Live camera not supported in this browser"
+                        }
+                      >
+                        {cameraSupported ? "Use Camera" : "Camera unavailable"}
+                      </button>
+                    </React.Fragment>
+                  )}
+                  {!!photoURL && (
                     // eslint-disable-next-line
                     <img
                       src={photoURL}
                       alt="Preview"
-                      style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 7, border: "1px solid #444" }}
+                      style={{ width: 52, height: 52, objectFit: "cover", borderRadius: 7, border: "1px solid #444", marginLeft: 7 }}
                     />
                   )}
                   {photo && (
@@ -486,11 +698,17 @@ function CityFixHubContainer() {
                     </button>
                   )}
                 </div>
+                {/* Fallback UI - explain missing support */}
+                {!cameraSupported && (
+                  <span style={{ fontSize: 13, color: "#ff5555", marginTop: 4, display: "block" }}>
+                    Live camera capture is not supported in this browser. You can use file upload.
+                  </span>
+                )}
               </div>
               {/* Location capture field */}
               <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                 <label style={{ fontWeight: 500 }}>
-                  Location <span style={{color:"var(--accent)"}}>*</span>
+                  Location <span style={{ color: "var(--accent)" }}>*</span>
                 </label>
                 <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                   <button
@@ -511,10 +729,15 @@ function CityFixHubContainer() {
                   >
                     {/* If captured, display lat/lng */}
                     {location.lat && location.lng ?
-                       `📍 ${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}`
-                       : locationStatus || "Not set"}
+                      `📍 ${location.lat.toFixed(3)}, ${location.lng.toFixed(3)}`
+                      : locationStatus || "Not set"}
                   </span>
                 </div>
+                {locationStatus === "Geolocation unsupported" && (
+                  <span style={{ fontSize: 13, color: "#ff5555" }}>
+                    Location autofill is not supported by your device/browser. Please enter location manually.
+                  </span>
+                )}
               </div>
               {/* Submit Button */}
               <div>
@@ -538,7 +761,7 @@ function CityFixHubContainer() {
 
           {/* Report List */}
           <section>
-            <h3 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 12px 0", color:'var(--primary)' }}>
+            <h3 style={{ fontSize: 18, fontWeight: 600, margin: "0 0 12px 0", color: 'var(--primary)' }}>
               Recent Reports
             </h3>
             {reports.length === 0 ? (
@@ -546,23 +769,23 @@ function CityFixHubContainer() {
                 No issues reported yet!
               </div>
             ) : (
-                <div
-                  className="cityfix-grid"
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                    gap: 20,
-                  }}
-                >
-                  {reports.map((rep) =>
-                    <ReportCard
-                      key={rep.id}
-                      report={rep}
-                      isAdmin={isAdmin}
-                      onStatusChange={handleStatusChange}
-                    />
-                  )}
-                </div>
+              <div
+                className="cityfix-grid"
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: 20,
+                }}
+              >
+                {reports.map((rep) =>
+                  <ReportCard
+                    key={rep.id}
+                    report={rep}
+                    isAdmin={isAdmin}
+                    onStatusChange={handleStatusChange}
+                  />
+                )}
+              </div>
             )}
           </section>
         </div>
