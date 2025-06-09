@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
+import UserSignUp from "./UserSignUp";
 
 /*
   Color theme:
@@ -448,8 +449,70 @@ function CameraCapture({ onCapture, fallbackToInput, onFallback, previewSrc, dis
   );
 }
 
+/**
+ * Simple modal overlay for login (used with UserSignUp form)
+ */
+function LoginModal({ open, onClose, children }) {
+  if (!open) return null;
+  return (
+    <div
+      style={{
+        position: "fixed", top: 0, left: 0, right: 0, bottom: 0,
+        background: "rgba(20,28,54,0.93)",
+        zIndex: 3000,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        transition: "opacity .25s",
+        animation: "fadein .2s",
+      }}
+      aria-modal="true"
+      tabIndex={-1}
+      role="dialog"
+      onClick={onClose}
+    >
+      <div
+        style={{
+          position: "relative",
+          maxWidth: 440,
+          width: "95vw",
+          background: "#181b2a",
+          borderRadius: 12,
+          boxShadow: "0 6px 40px #0548  ",
+          padding: "2.4rem 1.1rem 1.1rem 1.1rem",
+        }}
+        className="login-modal-inner"
+        onClick={e => e.stopPropagation()} // Prevent clicks in content from closing modal
+      >
+        <button
+          aria-label="Close login"
+          style={{
+            position: "absolute",
+            top: 8, right: 10,
+            background: "none",
+            border: "none",
+            color: "#fff",
+            fontSize: 25,
+            fontWeight: "bold",
+            opacity: 0.77,
+            cursor: "pointer",
+            zIndex: 2
+          }}
+          onClick={onClose}
+        >
+          ×
+        </button>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 // PUBLIC_INTERFACE
 function CityFixHubContainer() {
+  // State for login/signup (modal)
+  const [loginOpen, setLoginOpen] = useState(false);
+
   // Form state
   const [type, setType] = useState(""); // Issue type
   const [description, setDescription] = useState("");
@@ -714,7 +777,7 @@ function CityFixHubContainer() {
                 display: "inline-block",
                 minWidth: 83,
               }}
-              onClick={() => alert("Login (to be implemented)")}
+              onClick={() => setLoginOpen(true)}
             >
               Login
             </button>
@@ -732,6 +795,17 @@ function CityFixHubContainer() {
           </div>
         </div>
       </nav>
+
+      {/* Login Modal: Show UserSignUp only if loginOpen */}
+      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)}>
+        <UserSignUp
+          onSuccess={() => {
+            setLoginOpen(false);
+            setToast("Registration successful!");
+            setToastType("success");
+          }}
+        />
+      </LoginModal>
 
       {/* Toast/banner */}
       <Toast message={toast} type={toastType} onClose={() => setToast(null)} />
