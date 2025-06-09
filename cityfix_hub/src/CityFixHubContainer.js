@@ -697,13 +697,9 @@ function CityFixHubContainer() {
     );
   }
 
-  // Call this on every mount & on every time report form is loaded
+  // Call this unconditionally on initial mount to guarantee browser prompts for location
   useEffect(() => {
-    if (!location.lat && !location.lng) {
-      requestGeolocation();
-    }
-    // Only auto-populate if geo wasn't successful before and we have no manual address
-    // (relies on initial empty location)
+    requestGeolocation();
     // eslint-disable-next-line
   }, []);
 
