@@ -1,35 +1,29 @@
 import React, { useState } from "react";
 
 /**
- * PhotoLocationCapture
- * - Lets user select a photo (by upload or camera)
- * - Immediately after photo selection, triggers geolocation capture
- * - Shows "Capturing your location… Please allow access." while waiting for location permission/result
- * - Once both are acquired, keeps {photoFile, photoPreview, location} in state for further use
- *
- * Usage:
- *     <PhotoLocationCapture 
- *         onReady={({ photoFile, photoPreviewUrl, location }) => { ... }}
- *     />
- * 
- * Props:
- *   onReady: (object) => void    // called when both photo and location are available
- */
-/**
  * PUBLIC_INTERFACE
  * PhotoLocationCapture
- * Lets user select a photo (by upload or camera), then immediately triggers browser geolocation with user prompt,
- * showing robust feedback/status. When both are acquired, delivers {photoFile, photoPreviewUrl, location} to parent.
+ * Lets user select a photo (by upload or camera), triggers browser geolocation,
+ * then auto-reverse-geocodes to fill a human-readable address by OpenStreetMap Nominatim.
+ * Robustly handles errors and status, and delivers
+ *   {photoFile, photoPreviewUrl, location, address}
+ * to `onReady`.
+ *
+ * Props:
+ *   onReady: ({ photoFile, photoPreviewUrl, location, address }) => void
  */
 function PhotoLocationCapture({ onReady }) {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
   const [location, setLocation] = useState(null); // {lat, lng}
+  const [address, setAddress] = useState(""); // human-readable
   const [locationStatus, setLocationStatus] = useState("");
   const [locationPending, setLocationPending] = useState(false);
-  const [error, setError] = useState("");
+  const [geoError, setGeoError] = useState("");
+  const [addressError, setAddressError] = useState("");
+  const [isFetchingAddress, setIsFetchingAddress] = useState(false);
 
-  // Helper: Request geolocation programmatically (returns promise)
+  // Request geolocation
   function requestGeo() {
     return new Promise((resolve, reject) => {
       if (!window.navigator.geolocation) {
@@ -47,10 +41,10 @@ function PhotoLocationCapture({ onReady }) {
         return;
       }
       window.navigator.geolocation.getCurrentPosition(
-        position => {
+        pos => {
           resolve({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude
           });
         },
         err => {
@@ -70,61 +64,118 @@ function PhotoLocationCapture({ onReady }) {
     });
   }
 
-  async function beginLocationCapture() {
-    setError("");
+  // Reverse geocode with OSM Nominatim for address
+  async function fetchAddress(lat, lng) {
+    setIsFetchingAddress(true);
+    setAddress("");
+    setAddressError("");
+    try {
+      // Nominatim open API, be a good citizen!
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}&accept-language=en`;
+      const resp = await fetch(url, {
+        headers: {
+          "User-Agent": "CityFixHub/1.0 (https://cityfix-hub.local)",
+          "Referer": window?.location?.origin ?? undefined,
+        }
+      });
+      if (!resp.ok) throw new Error("Failed to fetch address.");
+      const data = await resp.json();
+      if (data.display_name) {
+        setAddress(data.display_name);
+        setAddressError("");
+        setIsFetchingAddress(false);
+        return data.display_name;
+      } else {
+        throw new Error("No address found.");
+      }
+    } catch (err) {
+      setAddressError("Could not auto-capture address.");
+      setIsFetchingAddress(false);
+      setAddress("");
+      return "";
+    }
+  }
+
+  // Orchestrate location and address autofill
+  async function beginLocationAndAddress() {
+    setGeoError("");
     setLocation(null);
+    setAddress("");
+    setAddressError("");
     setLocationStatus("Capturing your location… Please allow access.");
     setLocationPending(true);
+    setIsFetchingAddress(false);
 
     try {
       const geo = await requestGeo();
       setLocation(geo);
       setLocationPending(false);
       setLocationStatus("");
+      setAddress("");
+      setIsFetchingAddress(true);
+      const addressText = await fetchAddress(geo.lat, geo.lng);
+      setIsFetchingAddress(false);
+
       if (onReady) {
-        onReady({ photoFile, photoPreviewUrl, location: geo });
+        onReady({
+          photoFile,
+          photoPreviewUrl,
+          location: geo,
+          address: addressText
+        });
       }
     } catch (errMsg) {
-      setError(errMsg || "Could not capture your location.");
+      setGeoError(errMsg || "Could not capture your location.");
       setLocation(null);
       setLocationStatus("");
       setLocationPending(false);
     }
   }
 
+  // Handle photo input; resets state, starts location/address autofill
   function handlePhotoChange(e) {
-    setError("");
+    setGeoError("");
+    setAddressError("");
+    setAddress("");
     const file = e.target.files[0];
     if (!file) {
       setPhotoFile(null);
       setPhotoPreviewUrl("");
       setLocation(null);
+      setAddress("");
       setLocationStatus("");
       setLocationPending(false);
+      setIsFetchingAddress(false);
       return;
     }
     setPhotoFile(file);
     setPhotoPreviewUrl(URL.createObjectURL(file));
-    // Auto-trigger location capture after photo selection
-    beginLocationCapture();
+    // Auto-trigger location+address capture after photo selection
+    beginLocationAndAddress();
   }
 
   function handleReset() {
     setPhotoFile(null);
     setPhotoPreviewUrl("");
     setLocation(null);
+    setAddress("");
+    setGeoError("");
+    setAddressError("");
     setLocationStatus("");
     setLocationPending(false);
-    setError("");
+    setIsFetchingAddress(false);
   }
 
   function handleRetry() {
-    setError("");
+    setGeoError("");
+    setAddressError("");
     setLocationStatus("Capturing your location… Please allow access.");
     setLocationPending(true);
-    beginLocationCapture();
+    setIsFetchingAddress(false);
+    beginLocationAndAddress();
   }
 
+  // UI rendering
   return (
     <div
       className="photo-location-capture"
@@ -147,7 +198,7 @@ function PhotoLocationCapture({ onReady }) {
           accept="image/*"
           style={{ color: "#fff", width: 156, background: "#11192e", borderRadius: 6 }}
           onChange={handlePhotoChange}
-          disabled={locationPending}
+          disabled={locationPending || isFetchingAddress}
           capture="environment"
         />
         {photoPreviewUrl && (
@@ -185,9 +236,9 @@ function PhotoLocationCapture({ onReady }) {
         )}
       </div>
 
-      {/* Show location status */}
+      {/* Show geolocation/address status */}
       {photoFile && (
-        <div style={{ marginTop: 18 }}>
+        <div style={{ marginTop: 18, display: "flex", flexDirection: "column", gap: 7 }}>
           {locationPending ? (
             <div
               style={{
@@ -210,31 +261,7 @@ function PhotoLocationCapture({ onReady }) {
               </span>
               {locationStatus || "Capturing your location… Please allow access."}
             </div>
-          ) : location ? (
-            <div
-              style={{
-                background: "#071e16",
-                border: "1.5px solid #00ffa2",
-                borderRadius: 6,
-                color: "#3afa72",
-                fontWeight: 600,
-                padding: "11px 9px",
-                minHeight: 38,
-                fontSize: 13.5,
-                marginBottom: 2,
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-              }}
-              aria-live="polite"
-            >
-              <span role="img" aria-label="location">📍</span>
-              Captured:{" "}
-              <b>
-                {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-              </b>
-            </div>
-          ) : error ? (
+          ) : geoError ? (
             <div
               style={{
                 background: "#29011a",
@@ -245,10 +272,12 @@ function PhotoLocationCapture({ onReady }) {
                 padding: "11px 9px",
                 minHeight: 24,
                 fontSize: 13.5,
+                display: "flex",
+                alignItems: "center"
               }}
               aria-live="polite"
             >
-              ❌ {error}
+              ❌ {geoError}
               <button
                 className="btn"
                 type="button"
@@ -268,6 +297,83 @@ function PhotoLocationCapture({ onReady }) {
               >
                 Retry
               </button>
+            </div>
+          ) : (location && !isFetchingAddress) ? (
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 6,
+                minHeight: 36,
+              }}
+              aria-live="polite"
+            >
+              <div
+                style={{
+                  background: "#071e16",
+                  border: "1.5px solid #00ffa2",
+                  borderRadius: 6,
+                  color: "#3afa72",
+                  fontWeight: 600,
+                  padding: "11px 9px",
+                  fontSize: 13.5,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                  marginBottom: 2
+                }}
+              >
+                <span role="img" aria-label="location">📍</span>
+                Captured:{" "}
+                <b>
+                  {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                </b>
+              </div>
+              {address && (
+                <div
+                  style={{
+                    background: "#143c2a",
+                    color: "#c3ffe2",
+                    borderRadius: 5,
+                    fontSize: 14.2,
+                    fontWeight: 500,
+                    padding: "8px 10px 8px 8px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 7,
+                  }}
+                >
+                  <span role="img" aria-label="address" style={{ fontSize: 16 }}>🏠</span>
+                  <span>{address}</span>
+                </div>
+              )}
+              {addressError && (
+                <span style={{ color: "#ff5555", fontSize: 13, marginTop: 2 }}>
+                  {addressError}
+                </span>
+              )}
+            </div>
+          ) : isFetchingAddress ? (
+            <div
+              style={{
+                background: "#121b36",
+                border: "1.5px dashed #7ef2cf",
+                borderRadius: 6,
+                padding: "10px 9px",
+                minHeight: 34,
+                fontWeight: 500,
+                color: "#aaffec",
+                fontSize: 14.2,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+              aria-live="polite"
+            >
+              <span role="img" aria-label="progress" style={{ fontSize: 18 }}>
+                📡
+              </span>
+              Looking up address…
             </div>
           ) : null}
         </div>
