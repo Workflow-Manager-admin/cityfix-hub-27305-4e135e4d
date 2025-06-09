@@ -645,34 +645,91 @@ function CityFixHubContainer() {
           color: "var(--primary)",
         }}
       >
-        <div className="container" style={{ display: "flex", alignItems: "center", minHeight: 56 }}>
-          <div className="logo" style={{ fontSize: "1.32rem", letterSpacing: 0.8, color: "#fff" }}>
-            <span
-              className="logo-symbol"
-              style={{
-                color: "var(--accent)",
-                fontSize: 25,
-                fontWeight: 800,
-                marginRight: 7,
-              }}
-              aria-label="CityFixHub"
-            >
-              ♻️
-            </span>{" "}
-            CityFix Hub
-          </div>
-          <button
-            className="btn"
+        <div 
+          className="container"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            minHeight: 56,
+            justifyContent: "space-between",
+            position: "relative",
+            width: "100%"
+          }}
+        >
+          {/* Centered bold site name */}
+          <div
             style={{
-              background: isAdmin ? "var(--accent)" : "var(--primary)",
-              color: isAdmin ? "#222" : "var(--secondary)",
-              marginLeft: "auto",
-              fontWeight: 600,
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              display: "flex",
+              justifyContent: "center",
+              alignItems: "center",
+              pointerEvents: "none",
+              zIndex: 1,
             }}
-            onClick={() => setIsAdmin((x) => !x)}
           >
-            {isAdmin ? "Switch to User" : "Switch to Admin"}
-          </button>
+            <span
+              className="logo"
+              style={{
+                fontWeight: 800,
+                fontSize: "1.45rem",
+                color: "#fff",
+                letterSpacing: 0.9,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                pointerEvents: "auto",
+              }}
+            >
+              <span
+                className="logo-symbol"
+                style={{
+                  color: "var(--accent)",
+                  fontSize: 26,
+                  fontWeight: 900,
+                  marginRight: 7,
+                }}
+                aria-label="CityFixHub"
+              >
+                ♻️
+              </span>
+              CityFix Hub
+            </span>
+          </div>
+          {/* "Login" button on top right, "Switch to Admin/User" as demo */}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", zIndex: 2 }}>
+            <button
+              className="btn"
+              style={{
+                background: "#fff",
+                color: "var(--secondary)",
+                fontWeight: 600,
+                marginRight: "16px",
+                padding: "8px 18px",
+                borderRadius: 5,
+                fontSize: 15.5,
+                display: "inline-block",
+                minWidth: 83,
+              }}
+              onClick={() => alert("Login (to be implemented)")}
+            >
+              Login
+            </button>
+            <button
+              className="btn"
+              style={{
+                background: isAdmin ? "var(--accent)" : "var(--primary)",
+                color: isAdmin ? "#222" : "var(--secondary)",
+                fontWeight: 600,
+              }}
+              onClick={() => setIsAdmin((x) => !x)}
+            >
+              {isAdmin ? "Switch to User" : "Switch to Admin"}
+            </button>
+          </div>
         </div>
       </nav>
 

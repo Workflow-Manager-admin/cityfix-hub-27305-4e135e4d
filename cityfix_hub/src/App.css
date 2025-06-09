@@ -38,6 +38,46 @@ body {
   z-index: 100;
 }
 
+/* Nav container override for centered site name and right-aligned btns */
+.navbar .container {
+  display: flex;
+  align-items: center;
+  min-height: 56px;
+  justify-content: space-between;
+  position: relative;
+  width: 100%;
+}
+
+/* Centering the site name absolutely/remain responsive */
+.navbar .logo {
+  font-size: 1.45rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.9px;
+  text-align: center;
+  margin: 0 auto;
+  color: #fff;
+  /* On mobile, reduce font-size for better fit */
+}
+
+@media (max-width: 740px) {
+  .navbar .logo {
+    font-size: 1.02rem !important;
+  }
+  .navbar .container {
+    min-height: 44px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .navbar .container {
+    padding-left: 3px !important;
+    padding-right: 3px !important;
+  }
+  .navbar .logo {
+    font-size: 0.91rem !important;
+  }
+}
+
 .logo {
   font-size: 1.25rem;
   font-weight: 600;
