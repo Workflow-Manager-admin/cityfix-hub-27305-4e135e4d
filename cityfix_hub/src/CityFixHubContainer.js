@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "./App.css";
-import UserSignUp from "./UserSignUp";
+import AuthModal from "./AuthModal";
 
 /*
   Color theme:
@@ -796,16 +796,16 @@ function CityFixHubContainer() {
         </div>
       </nav>
 
-      {/* Login Modal: Show UserSignUp only if loginOpen */}
-      <LoginModal open={loginOpen} onClose={() => setLoginOpen(false)}>
-        <UserSignUp
-          onSuccess={() => {
-            setLoginOpen(false);
-            setToast("Registration successful!");
-            setToastType("success");
-          }}
-        />
-      </LoginModal>
+      {/* Auth Modal: Sign In/Up tabs */}
+      <AuthModal
+        open={loginOpen}
+        onClose={() => setLoginOpen(false)}
+        onAuthSuccess={() => {
+          setLoginOpen(false);
+          setToast("Welcome!");
+          setToastType("success");
+        }}
+      />
 
       {/* Toast/banner */}
       <Toast message={toast} type={toastType} onClose={() => setToast(null)} />
