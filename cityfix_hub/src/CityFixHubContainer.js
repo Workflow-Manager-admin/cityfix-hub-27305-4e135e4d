@@ -612,43 +612,105 @@ function CityFixHubContainer() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // Geolocation (browser API)
-  function handleGetLocation() {
+  // Robust geolocation logic
+  const [geo, setGeo] = useState({
+    loading: false,
+    error: null, // string | null
+    lastSuccess: null, // {lat, lng} | null
+    permissionDenied: false,
+    unsupported: false,
+    inProgress: false, // true if currently requesting
+  });
+
+  // Unified get geolocation
+  function requestGeolocation({ force } = {}) {
     if (!("geolocation" in navigator)) {
+      setGeo(g => ({
+        ...g,
+        error: "Geolocation not supported on this device/browser.",
+        unsupported: true,
+        inProgress: false,
+        loading: false,
+      }));
       setLocationStatus("Geolocation unsupported");
-      setToast("Geolocation not supported in this browser.");
-      setToastType("error");
       return;
     }
-    setLocationStatus("Loading...");
-    // Reset address state before fetching new location
+    setGeo(g => ({
+      ...g,
+      loading: true,
+      error: null,
+      inProgress: true,
+      permissionDenied: false,
+      unsupported: false,
+    }));
+    setLocationStatus("Locating...");
     setIsFetchingAddress(false);
     setAddressFetchError(null);
+    // Use high accuracy, maximum data quality
     navigator.geolocation.getCurrentPosition(
       (pos) => {
+        setGeo(g => ({
+          ...g,
+          loading: false,
+          inProgress: false,
+          lastSuccess: {
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          },
+          permissionDenied: false,
+          error: null,
+        }));
         setLocation({
           lat: pos.coords.latitude,
           lng: pos.coords.longitude,
         });
-        setLocationStatus("Captured!");
-        // address will be auto-fetched by effect when location changes
+        setLocationStatus("Location found!");
       },
       (err) => {
+        // See: https://developer.mozilla.org/en-US/docs/Web/API/PositionError
+        let msg = "Could not get location.";
+        let denied = false;
+        if (err.code === 1) {
+          msg = "Permission denied. Please allow location in your browser for automatic location capture.";
+          denied = true;
+        } else if (err.code === 2) {
+          msg = "Location unavailable. Please ensure your device's location is enabled.";
+        } else if (err.code === 3) {
+          msg = "Location request timed out. Try again, ideally outdoors or with better signal.";
+        } else if (err.message) {
+          msg = err.message;
+        }
+        setGeo(g => ({
+          ...g,
+          loading: false,
+          inProgress: false,
+          error: msg,
+          permissionDenied: denied,
+        }));
         setLocationStatus("Failed");
-        setToast("Could not get location (" + err.message + ")", "error");
-        setToastType("error");
+      },
+      {
+        enableHighAccuracy: true, // <-- maximize precision
+        timeout: 11000, // 11s: long enough but not forever
+        maximumAge: 0,
       }
     );
   }
 
-  // Auto geotag on form mount for convenience (optional: comment out if undesired)
+  // Call this on every mount & on every time report form is loaded
   useEffect(() => {
-    if ("geolocation" in navigator && !location.lat && !location.lng) {
-      // Wait ~500ms for UI to settle for a less jarring prompt
-      const t = setTimeout(() => handleGetLocation(), 600);
-      return () => clearTimeout(t);
+    if (!location.lat && !location.lng) {
+      requestGeolocation();
     }
-  }, []); // Only once
+    // Only auto-populate if geo wasn't successful before and we have no manual address
+    // (relies on initial empty location)
+    // eslint-disable-next-line
+  }, []);
+
+  // Manual retry handler for location refresh
+  function handleGeoRetry() {
+    requestGeolocation({ force: true });
+  }
 
   // Reverse geocoding effect: whenever location changes to a valid one, fetch address
   useEffect(() => {
@@ -1167,63 +1229,204 @@ function CityFixHubContainer() {
                     flexDirection: "row",
                   }}
                 >
-                  <div style={{display:"flex", flexDirection:"column", gap:2}}>
-                  <button
-                    type="button"
-                    className="btn"
-                    style={{
-                      fontSize: 15,
-                      background: "var(--secondary)",
-                      minWidth: 136,
-                    }}
-                    onClick={handleGetLocation}
-                  >
-                    {location.lat && location.lng
-                      ? "Update Location"
-                      : "Capture Location"}
-                  </button>
-                  {/* Location preview block, now clickable and next to map */}
-                  <span
-                    style={{
-                      color:
-                        locationStatus === "Captured!"
-                          ? "var(--accent)"
-                          : locationStatus === "Failed"
-                          ? "#ff5555"
-                          : "#fff",
-                      fontSize: 13,
-                      fontFamily: "monospace",
-                      background: "#111622",
-                      border: "1.3px solid #224",
-                      padding: "4.5px 8px",
-                      borderRadius: 6,
-                      minWidth: 120,
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                      letterSpacing: 0.2,
-                      marginTop: 2,
-                    }}
-                  >
-                    <span role="img" aria-label="Location">📍</span>
-                    {location.lat && location.lng ? (
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7 }}
-                        title="Open location in OpenStreetMap"
-                      >
-                        <span>
-                          {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                  <div style={{display:"flex", flexDirection:"column", gap:2, minWidth:175, maxWidth:300}}>
+                    <button
+                      type="button"
+                      className="btn"
+                      style={{
+                        fontSize: 15,
+                        background: "var(--secondary)",
+                        minWidth: 136,
+                        opacity: geo.loading ? 0.7 : 1,
+                        cursor: geo.loading ? "wait" : "pointer"
+                      }}
+                      onClick={handleGeoRetry}
+                      disabled={geo.loading}
+                    >
+                      {geo.loading
+                        ? "Acquiring..."
+                        : geo.lastSuccess
+                        ? "Refresh Location"
+                        : "Capture Location"}
+                    </button>
+                    {/* Location progress/success/error banner */}
+                    <div
+                      style={{
+                        margin: "8px 0 0 0",
+                        padding: "8px",
+                        background: geo.error
+                          ? "#390008"
+                          : geo.permissionDenied
+                          ? "#223d28"
+                          : geo.loading
+                          ? "#121d48"
+                          : geo.lastSuccess
+                          ? "#071e16"
+                          : "#181d27",
+                        border: geo.permissionDenied
+                          ? "1.6px solid #ecec00"
+                          : geo.error
+                          ? "1.5px solid #ff5555"
+                          : geo.loading
+                          ? "1.5px dashed #7ef2cf"
+                          : geo.lastSuccess
+                          ? "1.5px solid var(--accent)"
+                          : "1.2px solid #223",
+                        borderRadius: 6,
+                        color: geo.error
+                          ? "#ffb3b3"
+                          : geo.permissionDenied
+                          ? "#ecec00"
+                          : geo.loading
+                          ? "#7ef2cf"
+                          : geo.lastSuccess
+                          ? "#34ff8c"
+                          : "#eee",
+                        fontWeight: geo.loading
+                          ? 600
+                          : geo.permissionDenied
+                          ? 700
+                          : 500,
+                        fontSize: 13.2,
+                        minWidth: 128,
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 7,
+                        fontFamily: "monospace",
+                        lineHeight: 1.4,
+                        position: "relative"
+                      }}
+                      aria-live="polite"
+                    >
+                      {geo.loading && (
+                        <>
+                          <span style={{marginRight:7}} role="img" aria-label="progress">⏳</span>
+                          Trying to get your location&hellip;
+                        </>
+                      )}
+                      {geo.permissionDenied && (
+                        <>
+                          <span style={{marginRight:7}} role="img" aria-label="alert">🔒</span>
+                          Permission denied.
+                          <span style={{marginLeft:2, color:"var(--text-secondary)"}}>(Tap Refresh and allow browser access.)</span>
+                        </>
+                      )}
+                      {geo.unsupported && (
+                        <>
+                          <span style={{marginRight:7}} role="img" aria-label="unsupported">⚠️</span>
+                          Geolocation unsupported by your device/browser.
+                        </>
+                      )}
+                      {geo.error && !geo.permissionDenied && !geo.unsupported && (
+                        <>
+                          <span style={{marginRight:7}} role="img" aria-label="error">❌</span>
+                          {geo.error}
+                        </>
+                      )}
+                      {!geo.loading && !geo.error && !geo.permissionDenied && (
+                        <>
+                          {geo.lastSuccess || (location.lat && location.lng) ? (
+                            <>
+                              <span style={{marginRight:3}} role="img" aria-label="success">✔️</span>
+                              Location ready!
+                            </>
+                          ) : (
+                            <>
+                              <span style={{marginRight:3}} role="img" aria-label="info">ℹ️</span>
+                              Click "Capture Location" to auto-detect your location.
+                            </>
+                          )}
+                        </>
+                      )}
+                      {geo.inProgress && (
+                        <span
+                          style={{
+                            position: "absolute", right: 8, top: 10
+                          }}
+                        >
+                          <svg width={14} height={14} viewBox="0 0 50 50" aria-label="Acquiring…">
+                            <circle
+                              cx="25" cy="25" r="20"
+                              fill="none"
+                              stroke="#aaffec"
+                              strokeWidth="4"
+                              strokeDasharray="90"
+                              strokeDashoffset="0"
+                            >
+                              <animateTransform
+                                attributeName="transform"
+                                type="rotate"
+                                from="0 25 25"
+                                to="360 25 25"
+                                dur="0.7s"
+                                repeatCount="indefinite"
+                              />
+                            </circle>
+                          </svg>
                         </span>
-                      </a>
-                    ) : locationStatus ? (
-                      locationStatus
-                    ) : (
-                      "Not set"
+                      )}
+                    </div>
+                    {/* Show coordinates if available */}
+                    {(geo.lastSuccess || (location.lat && location.lng)) && (
+                      <span
+                        style={{
+                          color: "var(--accent)",
+                          fontSize: 13,
+                          fontFamily: "monospace",
+                          marginTop: 5,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 4,
+                          letterSpacing: 0.2,
+                          background: "#121622",
+                          border: "1.2px solid #25ffa1",
+                          borderRadius: 6,
+                          padding: "3px 8px",
+                          minWidth: 100,
+                        }}
+                      >
+                        <span role="img" aria-label="Location">📍</span>
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${location.lat || geo.lastSuccess?.lat}&mlon=${location.lng || geo.lastSuccess?.lng}#map=17/${location.lat || geo.lastSuccess?.lat}/${location.lng || geo.lastSuccess?.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{
+                            color: "#7fffd4",
+                            textDecoration: "underline",
+                            marginRight: 7,
+                            fontWeight: 600,
+                            letterSpacing: 0.3
+                          }}
+                          title="Open location in OpenStreetMap"
+                        >
+                          {(location.lat || geo.lastSuccess?.lat)?.toFixed(6)}, {(location.lng || geo.lastSuccess?.lng)?.toFixed(6)}
+                        </a>
+                        {(geo.lastSuccess && (!location.lat || !location.lng)) && (
+                          <span style={{fontSize:11, color:"#fff", marginLeft:2, opacity:0.75}}> (last captured)</span>
+                        )}
+                      </span>
                     )}
-                  </span>
+                    {geo.error && (
+                      <button
+                        style={{
+                          marginTop:8,
+                          background:"#152370",
+                          color:"#fff",
+                          border:"1.2px solid #7fffd4",
+                          borderRadius:4,
+                          padding:"4px 10px",
+                          fontSize:13,
+                          cursor:"pointer",
+                          fontWeight:600,
+                          width:"fit-content"
+                        }}
+                        type="button"
+                        onClick={handleGeoRetry}
+                        disabled={geo.loading}
+                      >
+                        Retry
+                      </button>
+                    )}
                   </div>
                   {/* Show thumbnail map if location */}
                   {(location.lat && location.lng) && (
@@ -1232,10 +1435,20 @@ function CityFixHubContainer() {
                     </div>
                   )}
                 </div>
-                {/* Accessible text fallback for manual entry (unsupported) */}
-                {locationStatus === "Geolocation unsupported" && (
+                {/* Accessible/fallback text */}
+                {geo.unsupported && (
                   <span style={{ fontSize: 13, color: "#ff5555" }}>
                     Location autofill is not supported by your device/browser. Please enter location manually.
+                  </span>
+                )}
+                {geo.permissionDenied && (
+                  <span style={{ fontSize: 13, color: "#ffea2f", marginTop: 3 }}>
+                    To report issues with your current location, please allow location permission for this site in your browser settings.
+                  </span>
+                )}
+                {(geo.error && !geo.permissionDenied && !geo.unsupported) && (
+                  <span style={{ fontSize: 13, color: "#e87a41", marginTop: 3 }}>
+                    Auto location unavailable. You may enter the address manually.
                   </span>
                 )}
               </div>
