@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import DeviceLocationCapture from "./DeviceLocationCapture";
 
 /**
  * PhotoLocationCapture
@@ -16,20 +15,83 @@ import DeviceLocationCapture from "./DeviceLocationCapture";
  * Props:
  *   onReady: (object) => void    // called when both photo and location are available
  */
-// PUBLIC_INTERFACE
+/**
+ * PUBLIC_INTERFACE
+ * PhotoLocationCapture
+ * Lets user select a photo (by upload or camera), then immediately triggers browser geolocation with user prompt,
+ * showing robust feedback/status. When both are acquired, delivers {photoFile, photoPreviewUrl, location} to parent.
+ */
 function PhotoLocationCapture({ onReady }) {
-  // State for photo and preview
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreviewUrl, setPhotoPreviewUrl] = useState("");
-  // State for location
   const [location, setLocation] = useState(null); // {lat, lng}
-  const [locationStatus, setLocationStatus] = useState(""); // feedback/status
-  const [locationPending, setLocationPending] = useState(false); // acquiring...
-
-  // Error feedback
+  const [locationStatus, setLocationStatus] = useState("");
+  const [locationPending, setLocationPending] = useState(false);
   const [error, setError] = useState("");
 
-  // Handler on file selection
+  // Helper: Request geolocation programmatically (returns promise)
+  function requestGeo() {
+    return new Promise((resolve, reject) => {
+      if (!window.navigator.geolocation) {
+        reject("Geolocation not supported in your browser.");
+        return;
+      }
+      // Only allow in secure contexts
+      const isSecure =
+        (typeof window.isSecureContext === "boolean" && window.isSecureContext) ||
+        window.location.protocol === "https:" ||
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1";
+      if (!isSecure) {
+        reject("Geolocation only works over HTTPS or localhost.");
+        return;
+      }
+      window.navigator.geolocation.getCurrentPosition(
+        position => {
+          resolve({
+            lat: position.coords.latitude,
+            lng: position.coords.longitude
+          });
+        },
+        err => {
+          let msg = "Could not get your location.";
+          if (err.code === 1) msg = "Permission denied. Please allow location in your browser.";
+          else if (err.code === 2) msg = "Location unavailable. Try again or enable GPS.";
+          else if (err.code === 3) msg = "Location request timed out.";
+          else if (err.message) msg = err.message;
+          reject(msg);
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 12000,
+          maximumAge: 0
+        }
+      );
+    });
+  }
+
+  async function beginLocationCapture() {
+    setError("");
+    setLocation(null);
+    setLocationStatus("Capturing your location… Please allow access.");
+    setLocationPending(true);
+
+    try {
+      const geo = await requestGeo();
+      setLocation(geo);
+      setLocationPending(false);
+      setLocationStatus("");
+      if (onReady) {
+        onReady({ photoFile, photoPreviewUrl, location: geo });
+      }
+    } catch (errMsg) {
+      setError(errMsg || "Could not capture your location.");
+      setLocation(null);
+      setLocationStatus("");
+      setLocationPending(false);
+    }
+  }
+
   function handlePhotoChange(e) {
     setError("");
     const file = e.target.files[0];
@@ -41,35 +103,12 @@ function PhotoLocationCapture({ onReady }) {
       setLocationPending(false);
       return;
     }
-    // Preview
     setPhotoFile(file);
     setPhotoPreviewUrl(URL.createObjectURL(file));
-    // Location: clear old, start acquiring
-    setLocation(null);
-    setLocationStatus("Capturing your location… Please allow access.");
-    setLocationPending(true);
+    // Auto-trigger location capture after photo selection
+    beginLocationCapture();
   }
 
-  // Called when DeviceLocationCapture returns a location
-  function handleLocationCapture(locObj) {
-    setLocation(locObj);
-    setLocationStatus("");
-    setLocationPending(false);
-    // If both photo and location, notify parent (onReady)
-    if (onReady) {
-      onReady({ photoFile, photoPreviewUrl, location: locObj });
-    }
-  }
-
-  // Called on error in location capture
-  function handleLocationError(msg) {
-    setError(msg || "Could not capture your location.");
-    setLocation(null);
-    setLocationPending(false);
-    setLocationStatus("");
-  }
-
-  // Reset everything (optionally: allow parent prop to clear)
   function handleReset() {
     setPhotoFile(null);
     setPhotoPreviewUrl("");
@@ -77,6 +116,13 @@ function PhotoLocationCapture({ onReady }) {
     setLocationStatus("");
     setLocationPending(false);
     setError("");
+  }
+
+  function handleRetry() {
+    setError("");
+    setLocationStatus("Capturing your location… Please allow access.");
+    setLocationPending(true);
+    beginLocationCapture();
   }
 
   return (
@@ -217,29 +263,13 @@ function PhotoLocationCapture({ onReady }) {
                   fontWeight: 600,
                   border: "none",
                 }}
-                onClick={() => {
-                  setError("");
-                  setLocationStatus("Capturing your location… Please allow access.");
-                  setLocationPending(true);
-                }}
+                onClick={handleRetry}
                 aria-label="Retry location"
               >
                 Retry
               </button>
             </div>
           ) : null}
-
-          {/* Invisible: The DeviceLocationCapture instance,
-              only invoked when a photo is present and pending location */}
-          {photoFile && locationPending && (
-            <div style={{ display: "none" }}>
-              <DeviceLocationCapture
-                onLocation={handleLocationCapture}
-                onError={handleLocationError}
-                buttonLabel="(start-hidden)"
-              />
-            </div>
-          )}
         </div>
       )}
     </div>
