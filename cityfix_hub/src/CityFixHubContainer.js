@@ -612,29 +612,131 @@ function CityFixHubContainer() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
-  // Robust geolocation logic
+  // --- Robust geolocation/permission logic ---
   const [geo, setGeo] = useState({
     loading: false,
     error: null, // string | null
     lastSuccess: null, // {lat, lng} | null
+    permissionState: "prompt", // "granted", "denied", "prompt", "unknown"
     permissionDenied: false,
     unsupported: false,
     inProgress: false, // true if currently requesting
+    insecureContext: false, // Not HTTPS/localhost
   });
 
-  // Unified get geolocation
-  function requestGeolocation({ force } = {}) {
+  // Check for HTTPS or localhost for Geolocation support
+  function isSecureContext() {
+    try {
+      if (window.isSecureContext) return true;
+    } catch (e) {}
+    const l = window.location;
+    return l.protocol === "https:" || l.hostname === "localhost" || l.hostname === "127.0.0.1";
+  }
+
+  // Check Permissions API availability
+  function hasPermissionsAPI() {
+    return typeof navigator.permissions !== "undefined" && typeof navigator.permissions.query === "function";
+  }
+
+  // Helper: get precise geolocation permission status (Permissions API)
+  async function checkGeoPermissionStatus() {
+    if (!hasPermissionsAPI()) return "unknown";
+    try {
+      const status = await navigator.permissions.query({ name: "geolocation" });
+      return status.state; // "granted", "prompt", "denied"
+    } catch (e) {
+      if (window && window.console) {
+        console.log("[CityFixHub] Permissions API error:", e);
+      }
+      return "unknown";
+    }
+  }
+
+  // Unified get geolocation with full secure/permissions/feedback support
+  async function requestGeolocation({ force } = {}) {
+    // 1. HTTPS/localhost check (required since Chrome 50+)
+    if (!isSecureContext()) {
+      setGeo(g => ({
+        ...g,
+        error:
+          "Geolocation access is blocked because this page is not served over HTTPS or localhost. Please use a secure context.",
+        insecureContext: true,
+        unsupported: false,
+        loading: false,
+        inProgress: false,
+        permissionDenied: false,
+        permissionState: "unknown",
+      }));
+      setLocationStatus("Insecure context (HTTPS/localhost required)");
+      if (window && window.console) {
+        console.error("[CityFixHub] Geolocation blocked: Insecure context. Served over:", window.location.protocol, window.location.hostname);
+      }
+      setLocation({ lat: null, lng: null });
+      return;
+    }
+
+    // 2. Permissions API check for geolocation
+    let permState = "unknown";
+    if (hasPermissionsAPI()) {
+      try {
+        const perm = await navigator.permissions.query({ name: "geolocation" });
+        permState = perm.state;
+        setGeo(g => ({
+          ...g,
+          permissionState: perm.state,
+          permissionDenied: perm.state === "denied"
+        }));
+        perm.onchange = () => {
+          // Listen for changes to permissions
+          setGeo(g => ({
+            ...g,
+            permissionState: perm.state,
+            permissionDenied: perm.state === "denied"
+          }));
+        };
+        if (window && window.console) {
+          console.log(`[CityFixHub] Permissions API status: ${perm.state}`);
+        }
+      } catch (e) {
+        if (window && window.console) {
+          console.log("[CityFixHub] Permissions API error (query):", e);
+        }
+        permState = "unknown";
+      }
+    }
+
+    // 3. Geolocation API presence check
     if (!("geolocation" in navigator)) {
       setGeo(g => ({
         ...g,
         error: "Geolocation not supported on this device/browser.",
         unsupported: true,
+        insecureContext: false,
         inProgress: false,
         loading: false,
       }));
       setLocationStatus("Geolocation unsupported");
+      if (window && window.console) {
+        console.warn("[CityFixHub] Geolocation unsupported by browser.");
+      }
+      setLocation({ lat: null, lng: null });
       return;
     }
+
+    if (permState === "denied") {
+      setGeo(g => ({
+        ...g,
+        error: "Location access has been denied in your browser permissions. Please allow location for this site to enable auto-capture.",
+        permissionDenied: true,
+        inProgress: false,
+        loading: false,
+      }));
+      setLocationStatus("Permission denied");
+      setLocation({ lat: null, lng: null });
+      return;
+    }
+
+    // Ready to request location
     setGeo(g => ({
       ...g,
       loading: true,
@@ -642,70 +744,109 @@ function CityFixHubContainer() {
       inProgress: true,
       permissionDenied: false,
       unsupported: false,
+      insecureContext: false,
     }));
     setLocationStatus("Locating...");
     setIsFetchingAddress(false);
     setAddressFetchError(null);
-    // Use high accuracy, maximum data quality
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGeo(g => ({
-          ...g,
-          loading: false,
-          inProgress: false,
-          lastSuccess: {
+
+    try {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setGeo(g => ({
+            ...g,
+            loading: false,
+            inProgress: false,
+            lastSuccess: {
+              lat: pos.coords.latitude,
+              lng: pos.coords.longitude,
+            },
+            error: null,
+            permissionDenied: false,
+          }));
+          setLocation({
             lat: pos.coords.latitude,
             lng: pos.coords.longitude,
-          },
-          permissionDenied: false,
-          error: null,
-        }));
-        setLocation({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        });
-        setLocationStatus("Location found!");
-      },
-      (err) => {
-        // See: https://developer.mozilla.org/en-US/docs/Web/API/PositionError
-        let msg = "Could not get location.";
-        let denied = false;
-        if (err.code === 1) {
-          msg = "Permission denied. Please allow location in your browser for automatic location capture.";
-          denied = true;
-        } else if (err.code === 2) {
-          msg = "Location unavailable. Please ensure your device's location is enabled.";
-        } else if (err.code === 3) {
-          msg = "Location request timed out. Try again, ideally outdoors or with better signal.";
-        } else if (err.message) {
-          msg = err.message;
+          });
+          setLocationStatus("Location found!");
+          if (window && window.console) {
+            console.log("[CityFixHub] Geolocation success:", pos.coords.latitude, pos.coords.longitude);
+          }
+        },
+        (err) => {
+          // https://developer.mozilla.org/en-US/docs/Web/API/PositionError
+          let msg = "Could not get location.";
+          let denied = false;
+          if (err.code === 1) {
+            msg = "Permission denied. Please allow location in your browser for automatic location capture.";
+            denied = true;
+          } else if (err.code === 2) {
+            msg = "Location unavailable. Please ensure your device's location is enabled.";
+          } else if (err.code === 3) {
+            msg = "Location request timed out. Try again, ideally outdoors or with better signal.";
+          } else if (err.message) {
+            msg = err.message;
+          }
+          setGeo(g => ({
+            ...g,
+            loading: false,
+            inProgress: false,
+            error: msg,
+            permissionDenied: denied,
+          }));
+          setLocation({ lat: null, lng: null });
+          setLocationStatus("Failed");
+          // Debug to console for diagnosis
+          if (window && window.console) {
+            console.warn("[CityFixHub] Geolocation error:", err);
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          timeout: 11000,
+          maximumAge: 0,
         }
-        setGeo(g => ({
-          ...g,
-          loading: false,
-          inProgress: false,
-          error: msg,
-          permissionDenied: denied,
-        }));
-        // Clear the location state to prevent stale or incorrect location usage
-        setLocation({ lat: null, lng: null });
-        setLocationStatus("Failed");
-        // Optional: Send a debug message to the console for diagnosis
-        if (window && window.console) {
-          console.warn("[CityFixHub] Geolocation error:", err);
-        }
-      },
-      {
-        enableHighAccuracy: true, // <-- maximize precision
-        timeout: 11000, // 11s: long enough but not forever
-        maximumAge: 0,
+      );
+    } catch (err) {
+      // Catches JS exceptions (should be rare)
+      setGeo(g => ({
+        ...g,
+        loading: false,
+        inProgress: false,
+        error: "Unexpected error during location capture. " + (err && err.message ? err.message : ""),
+        permissionDenied: false,
+      }));
+      if (window && window.console) {
+        console.error("[CityFixHub] Unexpected geolocation JS error:", err);
       }
-    );
+      setLocation({ lat: null, lng: null });
+      setLocationStatus("Failed");
+    }
   }
 
-  // Call this unconditionally on initial mount to guarantee browser prompts for location
+  // Call on mount for auto location prompt, and load permission state
   useEffect(() => {
-    requestGeolocation();
+    let didCancel = false;
+    async function initGeo() {
+      const isInsecure = !isSecureContext();
+      // Always set initial context
+      setGeo(g => ({ ...g, insecureContext: isInsecure }));
+      if (!isInsecure && hasPermissionsAPI()) {
+        try {
+          const perm = await navigator.permissions.query({ name: "geolocation" });
+          if (!didCancel) {
+            setGeo(g => ({ ...g, permissionState: perm.state, permissionDenied: perm.state === "denied" }));
+          }
+        } catch (e) {
+          if (window && window.console) {
+            console.log("[CityFixHub] Permissions API error (init):", e);
+          }
+        }
+      }
+      if (!didCancel) await requestGeolocation();
+    }
+    initGeo();
+    return () => { didCancel = true; };
     // eslint-disable-next-line
   }, []);
 
