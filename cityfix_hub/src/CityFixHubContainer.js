@@ -687,7 +687,13 @@ function CityFixHubContainer() {
           error: msg,
           permissionDenied: denied,
         }));
+        // Clear the location state to prevent stale or incorrect location usage
+        setLocation({ lat: null, lng: null });
         setLocationStatus("Failed");
+        // Optional: Send a debug message to the console for diagnosis
+        if (window && window.console) {
+          console.warn("[CityFixHub] Geolocation error:", err);
+        }
       },
       {
         enableHighAccuracy: true, // <-- maximize precision
@@ -1443,9 +1449,14 @@ function CityFixHubContainer() {
                   </span>
                 )}
                 {(geo.error && !geo.permissionDenied && !geo.unsupported) && (
-                  <span style={{ fontSize: 13, color: "#e87a41", marginTop: 3 }}>
-                    Auto location unavailable. You may enter the address manually.
-                  </span>
+                  <>
+                    <span style={{ fontSize: 13, color: "#e87a41", marginTop: 3 }}>
+                      Auto location unavailable. You may enter the address manually.
+                    </span>
+                    <span style={{ fontSize: 13, color: "#ff5555", marginTop: 3, display: "block" }}>
+                      {typeof geo.error === "string" ? geo.error : ""}
+                    </span>
+                  </>
                 )}
               </div>
               {/* Submit Button */}
