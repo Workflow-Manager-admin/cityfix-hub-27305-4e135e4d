@@ -1,16 +1,10 @@
 import React from "react";
 import styles from "./HomePage.module.css";
+import NavigationBar from "./NavigationBar";
 
 // PUBLIC_INTERFACE
 function HomePage() {
-  // The app branding and navigation links
-  const navLinks = [
-    { label: "How it Works", href: "#how" },
-    { label: "Track Reports", href: "#track" },
-    { label: "FAQ", href: "#faq" }
-  ];
-
-  // Icons for features
+  // Feature icons and feature content as before...
   const featureIcons = [
     (
       <svg width="39" height="39" fill="none" viewBox="0 0 39 39" aria-hidden="true">
@@ -40,7 +34,6 @@ function HomePage() {
     )
   ];
 
-  // Features array
   const features = [
     {
       title: "Report Local Issues",
@@ -64,42 +57,10 @@ function HomePage() {
     }
   ];
 
-  // Main CTA: We use a button for emphasis and accessibility.
-  // Optionally, in real UX, this would route to the /app (report issue form).
   return (
     <div className={styles.cfHome}>
-      {/* Header/Brand Bar */}
-      <header className={styles.header}>
-        <div className={styles.brandRow}>
-          <span className={styles.logo} aria-label="CityFix Hub Logo">
-            <svg width="36" height="36" viewBox="0 0 36 36" aria-hidden="true" className={styles.logoSvg}>
-              <defs>
-                <radialGradient id="cfhub-gradient" cx="60%" cy="40%" r="90%">
-                  <stop offset="0%" stopColor="#00ff00"/>
-                  <stop offset="75%" stopColor="#0000ff"/>
-                  <stop offset="100%" stopColor="#333"/>
-                </radialGradient>
-              </defs>
-              <circle cx="18" cy="18" r="17" stroke="#00ff00" strokeWidth="2.3" fill="url(#cfhub-gradient)" />
-              <path d="M12 21c1.4-2.9 4.2-7.6 10.1-10.6 4.4 2.2 6.9 7.5 7.5 10.7" fill="none" stroke="#fff" strokeWidth="1.1" opacity="0.77"/>
-            </svg>
-            <span className={styles.logoText}><span className={styles.city}>CityFix</span> <span className={styles.hub}>Hub</span></span>
-          </span>
-          <nav className={styles.nav}>
-            {navLinks.map(l => (
-              <a
-                key={l.href}
-                href={l.href}
-                className={styles.navLink}
-                tabIndex={0}
-              >
-                {l.label}
-              </a>
-            ))}
-          </nav>
-        </div>
-      </header>
-      {/* Hero Section */}
+      <NavigationBar />
+      {/* The main content, visually shifted down for fixed nav */}
       <main className={styles.mainPanel}>
         <section className={styles.heroSection}>
           <div className={styles.heroContent}>

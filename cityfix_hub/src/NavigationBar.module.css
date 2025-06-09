@@ -1,38 +1,46 @@
 :root {
   --navbar-bg: #101322;
+  --navbar-blur: rgba(30,40,72,0.93);
   --navbar-border: #0000ff;
   --navbar-text: #ffffff;
-  --navbar-link: #ffffff;
+  --navbar-link: #aee1fa;
   --navbar-link-hover: #00ff00;
   --navbar-link-active: #0000ff;
   --navbar-accent: #00ff00;
+  --navbar-box-shadow: 0 2px 16px #0008, 0 1.5px 6px #001a;
+  --navbar-outline: 2.5px solid var(--navbar-accent);
 }
+
 .navbar {
   position: fixed;
   top: 0; left: 0;
   width: 100vw;
-  background: var(--navbar-bg);
-  z-index: 500;
-  box-shadow: 0 2px 16px #0008;
-  border-bottom: 3px solid var(--navbar-border);
+  background: var(--navbar-blur);
+  z-index: 501;
+  box-shadow: var(--navbar-box-shadow);
+  border-bottom: 2.5px solid var(--navbar-border);
   font-family: 'Helvetica Neue', Arial, sans-serif;
-  min-height: 62px;
+  min-height: 66px;
   display: flex;
   align-items: center;
+  backdrop-filter: blur(9px) saturate(140%);
   transition: box-shadow .13s;
 }
+
 .container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  max-width: 1100px;
+  max-width: 1080px;
   width: 100%;
   margin: 0 auto;
-  padding: 0 44px;
-  min-height: 62px;
+  padding: 0 39px;
+  min-height: 66px;
+  position: relative;
 }
+
 .logo {
-  font-size: 1.49rem;
+  font-size: 2rem;
   font-weight: 900;
   color: var(--navbar-text);
   text-decoration: none;
@@ -41,13 +49,13 @@
   gap: 11px;
   letter-spacing: 0.8px;
   user-select: none;
+  transition: color .17s, text-shadow .13s;
 }
 
 .logoSymbol {
   color: var(--navbar-accent);
-  /* slight neon glow */
-  filter: drop-shadow(0 0 9px #00ff00cc);
-  font-size: 26px;
+  filter: drop-shadow(0 0 11px #00ff00cc);
+  font-size: 27px;
   font-weight: 900;
 }
 .logoText {
@@ -64,49 +72,83 @@
   color: var(--navbar-accent);
   margin-left: 2px;
   text-shadow: 0 2px 16px #00ff0055;
+  filter: drop-shadow(0 0 7px #00ff0080);
 }
 
 .linkList {
   list-style: none;
   display: flex;
-  gap: 34px;
+  gap: 36px;
   align-items: center;
   margin: 0;
   padding: 0;
 }
+
 .navLink {
   color: var(--navbar-link);
   text-decoration: none;
   font-weight: 700;
-  letter-spacing: .09em;
-  font-size: 1.08rem;
+  letter-spacing: .12em;
+  font-size: 1.09rem;
   text-transform: uppercase;
-  padding: 6px 1px 4px 2px;
+  padding: 0.44em 0 0.32em 0.22em;
+  border: none;
+  outline: none;
+  background: none;
   border-bottom: 3px solid transparent;
-  transition: color .17s, border-color .18s, text-shadow .17s;
-
+  transition: color .19s cubic-bezier(.18,.88,.31,1.15), border-color .18s, text-shadow .17s, background .18s;
+  position: relative;
+}
+.navLink:after {
+  content: "";
+  display: block;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--navbar-accent);
+  position: absolute;
+  left: 0; right: 0; bottom: -7px;
+  opacity: 0;
+  transform: scaleX(0.42);
+  transition: opacity .17s, transform .19s cubic-bezier(.38,1.45,.43,1.03);
 }
 .navLink:hover, .navLink:focus-visible {
-  color: var(--navbar-link-hover);
-  text-shadow: 0 0 11px #00ff0083;
+  color: #fff;
+  text-shadow: 0 0 8px var(--navbar-accent);
   border-bottom: 3px solid var(--navbar-accent);
   outline: none;
+}
+.navLink:hover:after,
+.navLink:focus:after {
+  opacity: 1;
+  transform: scaleX(1);
 }
 .active {
   color: var(--navbar-link-active) !important;
   border-bottom: 3px solid var(--navbar-link-active);
-  text-shadow: 0 0 7px #0000ff99;
+  text-shadow: 0 0 8px #0000ff99;
+  background: linear-gradient(90deg, #1324d1 70%, #1a8fff 102%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }
 
-@media (max-width: 700px) {
+@media (max-width: 850px) {
   .container {
-    padding: 0 11px;
-    min-height: 48px;
+    padding: 0 3vw;
+    min-height: 52px;
+    max-width: 98vw;
   }
   .logo {
-    font-size: 1.02rem;
+    font-size: 1.18rem;
   }
   .linkList {
-    gap: 16px;
+    gap: 19px;
   }
 }
+@media (max-width: 600px) {
+  .container { padding: 0 2vw; min-height: 46px; }
+  .navbar { min-height: 48px; }
+  .logo { font-size: 1.07rem; }
+  .linkList { gap: 10px; }
+}
+

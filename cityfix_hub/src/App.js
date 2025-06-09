@@ -2,6 +2,12 @@ import React from 'react';
 import './App.css';
 import HomePage from './HomePage';
 import CityFixHubContainer from './CityFixHubContainer';
+import ReportIssue from "./ReportIssue";
+import Check from "./Check";
+import IssueStatus from "./IssueStatus";
+import ContactUs from "./ContactUs";
+import About from "./About";
+import NavigationBar from './NavigationBar';
 
 // Try to import react-router-dom (if installed)
 let Router, Routes, Route, BrowserRouter;
@@ -23,10 +29,15 @@ function App() {
   if (BrowserRouter && Routes && Route) {
     return (
       <BrowserRouter>
+        <NavigationBar />
         <Routes>
           <Route path="/" element={<HomePage />} />
-          {/* Add other routes as needed, e.g., /app for main CityFixHubContainer */}
           <Route path="/app" element={<CityFixHubContainer />} />
+          <Route path="/report" element={<ReportIssue />} />
+          <Route path="/check" element={<Check />} />
+          <Route path="/status" element={<IssueStatus />} />
+          <Route path="/contact" element={<ContactUs />} />
+          <Route path="/about" element={<About />} />
         </Routes>
       </BrowserRouter>
     );
@@ -35,6 +46,7 @@ function App() {
   // Fallback: just render HomePage (minimal projects or if router not present)
   return (
     <div>
+      <NavigationBar />
       <HomePage />
     </div>
   );
