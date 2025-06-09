@@ -69,7 +69,52 @@ function Toast({ message, type = "success", onClose }) {
   );
 }
 
-/* Updated Report Card: shows location beneath the photo in a distinct, clean block */
+/**
+ * MapThumbnail shows a static OSM iframe for lat/lng or falls back to a link if blocked.
+ * - Can be used in form or report grid cards.
+ * PUBLIC_INTERFACE
+ */
+function MapThumbnail({ lat, lng, width = "100%", height = 120, borderRadius = 6, border = "#223", style = {}, linkOnly = false }) {
+  const [error, setError] = useState(false);
+  if (!lat || !lng) return null;
+
+  const osmUrl = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=18/${lat}/${lng}`;
+  const embedSrc = `https://www.openstreetmap.org/export/embed.html?bbox=${lng - 0.004},${lat - 0.003},${lng + 0.004},${lat + 0.003}&layer=mapnik&marker=${lat},${lng}`;
+  // Try iframe; if fails, fallback to just clickable OPEN MAP link
+  if (error || linkOnly) {
+    return (
+      <div style={{ width, minHeight: 45, margin: "2px 0" }}>
+        <a href={osmUrl} target="_blank" rel="noopener noreferrer"
+           style={{ color: "#7fffd4", textDecoration: "underline", fontSize: 13.2 }}>
+           🌍 Open Map ({lat.toFixed(5)},{lng.toFixed(5)})
+        </a>
+      </div>
+    );
+  }
+  return (
+    <div style={{ width, maxWidth: 340, minHeight: height, borderRadius: borderRadius, border: `1.5px solid ${border}`, margin: "2px 0", ...style, overflow: "hidden", background: "#151b37" }}>
+      <iframe
+        title="Map Thumbnail"
+        width="100%"
+        height={height}
+        frameBorder="0"
+        style={{ borderRadius, display: "block", width: "100%", pointerEvents: "auto" }}
+        src={embedSrc}
+        aria-label="Location map preview"
+        allowFullScreen
+        loading="lazy"
+        onError={() => setError(true)}
+      />
+      <div style={{ textAlign: "right", fontSize: 11, color: "#aaa", padding: "1px 4px 2px 0" }}>
+        <a href={osmUrl} tabIndex={-1} rel="noopener noreferrer" target="_blank" style={{ color: "#6ce6dc" }}>
+          View Larger
+        </a>
+      </div>
+    </div>
+  );
+}
+
+/* Updated Report Card: shows location beneath the photo with an embedded map and clickable coords */
 function ReportCard({ report, isAdmin, onStatusChange }) {
   const {
     id,
@@ -80,6 +125,14 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
     status,
     createdAt,
   } = report;
+
+  // Only show valid map for proper coordinates
+  const hasCoords = location?.lat && location?.lng;
+
+  // Google Maps direct link fallback
+  const gmapsUrl = hasCoords
+    ? `https://maps.google.com/?q=${location.lat},${location.lng}`
+    : null;
 
   return (
     <div
@@ -127,40 +180,58 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
           <span style={{ color: "#444", fontSize: 80 }}>📷</span>
         )}
       </div>
-      {/* Location as a prominent badge/block directly under the photo */}
-      <div
-        style={{
-          width: "100%",
-          background: "#131834",
-          border: "1px solid #223",
-          borderRadius: 5,
-          color: "#aae4c7",
-          fontSize: 13.2,
-          padding: "6px 9px 5px 5px",
-          marginTop: 3,
-          marginBottom: 1,
-          letterSpacing: 0.1,
-          fontFamily: "monospace",
-          display: "flex",
-          alignItems: "center",
-          gap: 6,
-          overflowX: "auto",
-          wordBreak: "break-word",
-        }}
-        aria-label={`Latitude and longitude for this issue${location?.lat && location?.lng
-          ? `: ${location.lat}, ${location.lng}` : ""}`}
-      >
-        <span role="img" aria-label="location" style={{ fontSize: 15 }}>
-          📍
-        </span>
-        {location?.lat && location?.lng ? (
-          <>
-            Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
-            | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
-          </>
-        ) : (
-          <span style={{ color: "#ff9999" }}>Location N/A</span>
-        )}
+      {/* Location badge with clickable coordinates and map */}
+      <div style={{ width: "100%", margin: "2px 0 2px 0" }}>
+        <div
+          style={{
+            background: "#131834",
+            border: "1px solid #223",
+            borderRadius: 5,
+            color: "#aae4c7",
+            fontSize: 13.2,
+            padding: "6px 9px 5px 5px",
+            letterSpacing: 0.1,
+            fontFamily: "monospace",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            overflowX: "auto",
+            wordBreak: "break-word",
+            flexWrap: "wrap"
+          }}
+          aria-label={`Latitude and longitude for this issue${hasCoords ? `: ${location.lat}, ${location.lng}` : ""}`}
+        >
+          <span role="img" aria-label="location" style={{ fontSize: 15 }}>
+            📍
+          </span>
+          {hasCoords ? (
+            <>
+              <a
+                href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=18/${location.lat}/${location.lng}`}
+                target="_blank" rel="noopener noreferrer"
+                style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 5, wordBreak: "keep-all" }}
+                title="Open location in OpenStreetMap"
+              >
+                Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
+                | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
+              </a>
+              <a
+                href={gmapsUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                tabIndex={-1}
+                style={{ color: "#aaffec", textDecoration: "underline", fontSize: 11, marginLeft: 6 }}
+              >Gmaps</a>
+            </>
+          ) : (
+            <span style={{ color: "#ff9999" }}>Location N/A</span>
+          )}
+        </div>
+        {hasCoords &&
+          <div style={{ maxWidth: 340, margin: "2px auto 1px auto" }}>
+            <MapThumbnail lat={location.lat} lng={location.lng} width="100%" height={90} borderRadius={5} />
+          </div>
+        }
       </div>
       <div style={{ fontWeight: 600, color: "var(--primary)" }}>{type}</div>
       <div style={{ color: "var(--text-secondary)", fontSize: 15 }}>
@@ -765,11 +836,13 @@ function CityFixHubContainer() {
                 <div
                   style={{
                     display: "flex",
-                    alignItems: "center",
-                    gap: 10,
+                    alignItems: "flex-start",
+                    gap: 15,
                     flexWrap: "wrap",
+                    flexDirection: "row",
                   }}
                 >
+                  <div style={{display:"flex", flexDirection:"column", gap:2}}>
                   <button
                     type="button"
                     className="btn"
@@ -784,7 +857,7 @@ function CityFixHubContainer() {
                       ? "Update Location"
                       : "Capture Location"}
                   </button>
-                  {/* Location preview block */}
+                  {/* Location preview block, now clickable and next to map */}
                   <span
                     style={{
                       color:
@@ -809,17 +882,30 @@ function CityFixHubContainer() {
                   >
                     <span role="img" aria-label="Location">📍</span>
                     {location.lat && location.lng ? (
-                      <>
+                      <a
+                        href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: "#7fffd4", textDecoration: "underline" }}
+                        title="Open location in OpenStreetMap"
+                      >
                         <span>
-                          {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                         {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
                         </span>
-                      </>
+                      </a>
                     ) : locationStatus ? (
                       locationStatus
                     ) : (
                       "Not set"
                     )}
                   </span>
+                  </div>
+                  {/* Show thumbnail map if location */}
+                  {(location.lat && location.lng) && (
+                    <div style={{ minWidth:120, maxWidth: 180, flex:1 }}>
+                      <MapThumbnail lat={location.lat} lng={location.lng} width="100%" height={65} borderRadius={6} style={{marginTop:0}} />
+                    </div>
+                  )}
                 </div>
                 {/* Accessible text fallback for manual entry (unsupported) */}
                 {locationStatus === "Geolocation unsupported" && (
