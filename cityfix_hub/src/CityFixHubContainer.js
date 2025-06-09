@@ -107,7 +107,17 @@ function MapThumbnail({ lat, lng, width = "100%", height = 120, borderRadius = 6
       />
       <div style={{ textAlign: "right", fontSize: 11, color: "#aaa", padding: "1px 4px 2px 0" }}>
         <a href={osmUrl} tabIndex={-1} rel="noopener noreferrer" target="_blank" style={{ color: "#6ce6dc" }}>
-          View Larger
+          View Larger (OSM)
+        </a>{" "}
+        |{" "}
+        <a
+          href={`https://maps.google.com/?q=${lat},${lng}`}
+          tabIndex={-1}
+          rel="noopener noreferrer"
+          target="_blank"
+          style={{ color: "#aaffec" }}
+        >
+          Google Maps
         </a>
       </div>
     </div>
@@ -207,21 +217,33 @@ function ReportCard({ report, isAdmin, onStatusChange }) {
           {hasCoords ? (
             <>
               <a
-                href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=18/${location.lat}/${location.lng}`}
-                target="_blank" rel="noopener noreferrer"
-                style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 5, wordBreak: "keep-all" }}
-                title="Open location in OpenStreetMap"
-              >
-                Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
-                | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
-              </a>
-              <a
                 href={gmapsUrl}
                 target="_blank"
                 rel="noopener noreferrer"
+                style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7, wordBreak: "keep-all", display: "inline-block" }}
+                title="Open location in Google Maps"
+              >
+                <span>
+                  Lat: <b style={{ color: "#7fffd4", marginRight: 2 }}>{location.lat.toFixed(6)}</b>
+                  | Lng: <b style={{ color: "#7fffd4", marginRight: 4 }}>{location.lng.toFixed(6)}</b>
+                </span>
+              </a>
+              <a
+                href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=18/${location.lat}/${location.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 tabIndex={-1}
-                style={{ color: "#aaffec", textDecoration: "underline", fontSize: 11, marginLeft: 6 }}
-              >Gmaps</a>
+                style={{
+                  color: "#aaffec",
+                  textDecoration: "underline",
+                  fontSize: 11,
+                  marginLeft: 5,
+                  marginRight: 2,
+                }}
+                title="Open location in OpenStreetMap"
+              >
+                OSM
+              </a>
             </>
           ) : (
             <span style={{ color: "#ff9999" }}>Location N/A</span>
@@ -882,17 +904,28 @@ function CityFixHubContainer() {
                   >
                     <span role="img" aria-label="Location">📍</span>
                     {location.lat && location.lng ? (
-                      <a
-                        href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: "#7fffd4", textDecoration: "underline" }}
-                        title="Open location in OpenStreetMap"
-                      >
-                        <span>
-                         {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
-                        </span>
-                      </a>
+                      <>
+                        <a
+                          href={`https://maps.google.com/?q=${location.lat},${location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "#7fffd4", textDecoration: "underline", marginRight: 7 }}
+                          title="Open location in Google Maps"
+                        >
+                          <span>
+                            {location.lat.toFixed(6)}, {location.lng.toFixed(6)}
+                          </span>
+                        </a>
+                        <a
+                          href={`https://www.openstreetmap.org/?mlat=${location.lat}&mlon=${location.lng}#map=17/${location.lat}/${location.lng}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ color: "#aaffec", textDecoration: "underline", fontSize: 11 }}
+                          title="Open location in OpenStreetMap"
+                        >
+                          OSM
+                        </a>
+                      </>
                     ) : locationStatus ? (
                       locationStatus
                     ) : (
